@@ -323,12 +323,15 @@ export default function HomePage() {
     setBusy(true);
     setMessage("");
 
+    const normalizedTitle =
+      title.trim().slice(0, 120) || "Untitled document";
+
     try {
       const { data, error } = await supabase
         .from("documents")
         .insert({
           owner_id: userId,
-          title: title.trim() || "Untitled document",
+          title: normalizedTitle,
           content_json: {
             type: "doc",
             content: [{ type: "paragraph" }],

@@ -140,26 +140,40 @@ function DocumentEditorContent() {
       return;
     }
 
+    const normalizedTitle = cleanTitle.slice(0, 120);
+
     setSaving(true);
     setMessage("Saving...");
 
     try {
-      const { error } = await supabase
+      const { data: updatedRows, error } = await supabase
         .from("documents")
         .update({
-          title: cleanTitle,
+          title: normalizedTitle,
           content_json: editor.getJSON(),
           updated_at: new Date().toISOString(),
         })
-        .eq("id", documentId);
+        .eq("id", documentId)
+        .select("id");
 
       if (error) {
         // If RLS rejects or access was revoked
-        if (error.code === "42501" || error.message.toLowerCase().includes("permission")) {
+        if (
+          error.code === "42501" ||
+          error.message.toLowerCase().includes("permission")
+        ) {
           setMessage("Save failed: You no longer have permission to edit this document.");
         } else {
           setMessage(`Save failed: ${error.message}`);
         }
+        return;
+      }
+
+      // If RLS filtered the update (e.g. permission revoked while editor was open)
+      if (!updatedRows || updatedRows.length === 0) {
+        setMessage(
+          "Save failed: You no longer have permission to edit this document or it was deleted."
+        );
         return;
       }
 
@@ -171,6 +185,17 @@ function DocumentEditorContent() {
       setSaving(false);
     }
   }, [canEdit, documentId, editor, loaded, saving, supabase, title]);
+
+  // Protect against accidental navigation/tab closing with unsaved changes
+  useEffect(() => {
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (dirty) {
+        e.preventDefault();
+      }
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [dirty]);
 
   const deleteDocument = useCallback(async () => {
     if (role !== "owner" || deleting) return;
