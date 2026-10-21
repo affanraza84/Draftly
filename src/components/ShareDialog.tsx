@@ -49,7 +49,17 @@ export function ShareDialog({
         .order("created_at", { ascending: true });
 
       if (sharesError) {
-        setErrorMessage(`Failed to load shares: ${sharesError.message}`);
+        if (
+          sharesError.code === "PGRST205" ||
+          sharesError.message.toLowerCase().includes("schema cache") ||
+          sharesError.message.toLowerCase().includes("document_shares")
+        ) {
+          setErrorMessage(
+            "Database migration required: The 'document_shares' table is missing from your Supabase database. Please run the SQL migration (supabase/migrations/20261021230000_document_sharing_and_access_control.sql) in your Supabase SQL Editor."
+          );
+        } else {
+          setErrorMessage(`Failed to load shares: ${sharesError.message}`);
+        }
         return;
       }
 
@@ -102,7 +112,17 @@ export function ShareDialog({
         if (cancelled) return;
 
         if (sharesError) {
-          setErrorMessage(`Failed to load shares: ${sharesError.message}`);
+          if (
+            sharesError.code === "PGRST205" ||
+            sharesError.message.toLowerCase().includes("schema cache") ||
+            sharesError.message.toLowerCase().includes("document_shares")
+          ) {
+            setErrorMessage(
+              "Database migration required: The 'document_shares' table is missing from your Supabase database. Please run the SQL migration (supabase/migrations/20261021230000_document_sharing_and_access_control.sql) in your Supabase SQL Editor."
+            );
+          } else {
+            setErrorMessage(`Failed to load shares: ${sharesError.message}`);
+          }
           setLoadingShares(false);
           return;
         }

@@ -92,7 +92,19 @@ export default function HomePage() {
         .order("created_at", { ascending: false });
 
       if (sharesError) {
-        setMessage(`Failed to load shared documents: ${sharesError.message}`);
+        if (
+          sharesError.code === "PGRST205" ||
+          sharesError.message?.toLowerCase().includes("schema cache") ||
+          sharesError.message?.toLowerCase().includes("document_shares")
+        ) {
+          // Migration not yet applied; keep sharedDocuments empty and don't block user's own docs
+          setSharedDocuments([]);
+          setMessage(
+            "Note: Document sharing requires running the database migration in supabase/migrations/20261021230000_document_sharing_and_access_control.sql."
+          );
+        } else {
+          setMessage(`Failed to load shared documents: ${sharesError.message}`);
+        }
         return;
       }
 
