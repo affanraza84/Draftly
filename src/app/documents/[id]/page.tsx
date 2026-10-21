@@ -31,6 +31,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { ShareDialog } from "@/components/ShareDialog";
 import { VersionHistoryModal } from "@/components/VersionHistoryModal";
+import { CollaboratorPresence } from "@/components/CollaboratorPresence";
 import {
   convertTiptapToMarkdown,
   sanitizeMarkdownFilename,
@@ -53,6 +54,7 @@ function DocumentEditorContent() {
   const supabase = useMemo(() => createClient(), []);
 
   const [currentUserId, setCurrentUserId] = useState<string>("");
+  const [currentUserEmail, setCurrentUserEmail] = useState<string>("");
   const [role, setRole] = useState<DocumentRole | null>(null);
   const [title, setTitle] = useState("");
   const [loaded, setLoaded] = useState(false);
@@ -97,6 +99,7 @@ function DocumentEditorContent() {
       }
 
       setCurrentUserId(user.id);
+      setCurrentUserEmail(user.email || "");
 
       const { data, error } = await supabase
         .from("documents")
@@ -501,6 +504,15 @@ function DocumentEditorContent() {
                 </span>
               )}
             </div>
+
+            {/* Real-Time Collaborator Presence */}
+            <CollaboratorPresence
+              documentId={documentId}
+              currentUserId={currentUserId}
+              currentUserEmail={currentUserEmail}
+              userRole={role}
+              hasAccess={loaded && role !== null}
+            />
           </div>
 
           {/* Right: Actions */}
