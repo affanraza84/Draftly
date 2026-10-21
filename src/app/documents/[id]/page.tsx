@@ -15,6 +15,7 @@ import {
   Download,
   Edit3,
   Eye,
+  History,
   Italic,
   List,
   ListOrdered,
@@ -29,6 +30,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { ShareDialog } from "@/components/ShareDialog";
+import { VersionHistoryModal } from "@/components/VersionHistoryModal";
 import {
   convertTiptapToMarkdown,
   sanitizeMarkdownFilename,
@@ -59,6 +61,7 @@ function DocumentEditorContent() {
   const [deleting, setDeleting] = useState(false);
   const [message, setMessage] = useState("");
   const [shareOpen, setShareOpen] = useState(false);
+  const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
 
   const canEdit = role === "owner" || role === "editor";
 
@@ -260,12 +263,100 @@ function DocumentEditorContent() {
 
       setDirty(false);
       setMessage("All changes saved");
+
+      // Record a document version snapshot (non-blocking)
+      try {
+        const { error: rpcError } = await supabase.rpc(
+          "create_document_version_snapshot",
+          {
+            p_document_id: documentId,
+            p_title: normalizedTitle,
+            p_content_json: editor.getJSON(),
+            p_summary: "Manual save",
+          }
+        );
+
+        if (rpcError) {
+          const { count } = await supabase
+            .from("document_versions")
+            .select("id", { count: "exact", head: true })
+            .eq("document_id", documentId);
+
+          const nextVer = (count ?? 0) + 1;
+          await supabase.from("document_versions").insert({
+            document_id: documentId,
+            version_number: nextVer,
+            title: normalizedTitle,
+            content_json: editor.getJSON(),
+            change_summary: "Manual save",
+            created_by: currentUserId,
+          });
+        }
+      } catch {
+        // Non-blocking: document update already succeeded
+      }
     } catch {
       setMessage("Save failed. Check your connection and try again.");
     } finally {
       setSaving(false);
     }
-  }, [canEdit, documentId, editor, loaded, saving, supabase, title]);
+  }, [canEdit, currentUserId, documentId, editor, loaded, saving, supabase, title]);
+
+  const handleRestoreVersion = useCallback(
+    async (
+      versionNumber: number,
+      targetTitle: string,
+      targetContent: Record<string, unknown>
+    ): Promise<boolean> => {
+      if (role !== "owner" || !editor) return false;
+
+      try {
+        // 1. Try atomic database restore RPC
+        const { error: rpcError } = await supabase.rpc("restore_document_version", {
+          p_document_id: documentId,
+          p_version_number: versionNumber,
+        });
+
+        if (rpcError) {
+          // Fallback to direct update & snapshot insert
+          const { error: updateError } = await supabase
+            .from("documents")
+            .update({
+              title: targetTitle,
+              content_json: targetContent,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", documentId);
+
+          if (updateError) return false;
+
+          const { count } = await supabase
+            .from("document_versions")
+            .select("id", { count: "exact", head: true })
+            .eq("document_id", documentId);
+
+          await supabase.from("document_versions").insert({
+            document_id: documentId,
+            version_number: (count ?? 0) + 1,
+            title: targetTitle,
+            content_json: targetContent,
+            change_summary: `Restored from version ${versionNumber}`,
+            created_by: currentUserId,
+          });
+        }
+
+        // 2. Synchronize local editor state
+        setTitle(targetTitle);
+        editor.commands.setContent(targetContent);
+        setDirty(false);
+        setMessage(`Restored from version ${versionNumber}`);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [currentUserId, documentId, editor, role, supabase]
+  );
 
   useEffect(() => {
     function handleBeforeUnload(e: BeforeUnloadEvent) {
@@ -422,6 +513,16 @@ function DocumentEditorContent() {
             >
               <Download className="h-3.5 w-3.5 text-[#5754D6]" />
               <span className="hidden sm:inline">Export</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setVersionHistoryOpen(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-[#E5E5E5] bg-white px-3 py-1.5 text-xs font-medium text-[#171717] hover:bg-[#FAFAF8] shadow-xs transition cursor-pointer"
+              title="Inspect past snapshots and version history"
+            >
+              <History className="h-3.5 w-3.5 text-[#5754D6]" />
+              <span className="hidden sm:inline">History</span>
             </button>
 
             {role === "owner" && (
@@ -694,6 +795,15 @@ function DocumentEditorContent() {
           currentUserId={currentUserId}
         />
       )}
+
+      {/* Version History Dialog */}
+      <VersionHistoryModal
+        isOpen={versionHistoryOpen}
+        onClose={() => setVersionHistoryOpen(false)}
+        documentId={documentId}
+        isOwner={role === "owner"}
+        onRestore={handleRestoreVersion}
+      />
     </div>
   );
 }
