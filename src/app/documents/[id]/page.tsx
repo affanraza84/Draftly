@@ -12,6 +12,7 @@ import {
   Bold,
   Check,
   ChevronLeft,
+  Download,
   Edit3,
   Eye,
   Italic,
@@ -28,6 +29,11 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { ShareDialog } from "@/components/ShareDialog";
+import {
+  convertTiptapToMarkdown,
+  sanitizeMarkdownFilename,
+  triggerMarkdownDownload,
+} from "@/lib/document-export";
 
 type DocumentRecord = {
   id: string;
@@ -302,6 +308,23 @@ function DocumentEditorContent() {
     }
   }, [deleting, documentId, role, router, supabase]);
 
+  const handleExportMarkdown = useCallback(() => {
+    if (!editor || !loaded) return;
+
+    try {
+      // Export current editor state so unsaved changes are preserved
+      const currentJson = editor.getJSON();
+      const markdown = convertTiptapToMarkdown(currentJson);
+      const filename = sanitizeMarkdownFilename(title);
+      triggerMarkdownDownload(markdown, filename);
+      setMessage("Document exported as Markdown (.md)");
+    } catch (err) {
+      setMessage(
+        `Export failed: ${err instanceof Error ? err.message : "Unable to generate file"}`
+      );
+    }
+  }, [editor, loaded, title]);
+
   if (!editor || !loaded) {
     return (
       <main className="min-h-screen bg-[#FAFAF8] flex items-center justify-center p-8">
@@ -391,6 +414,16 @@ function DocumentEditorContent() {
 
           {/* Right: Actions */}
           <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleExportMarkdown}
+              className="flex items-center gap-1.5 rounded-lg border border-[#E5E5E5] bg-white px-3 py-1.5 text-xs font-medium text-[#171717] hover:bg-[#FAFAF8] shadow-xs transition cursor-pointer"
+              title="Export current document content to Markdown (.md)"
+            >
+              <Download className="h-3.5 w-3.5 text-[#5754D6]" />
+              <span className="hidden sm:inline">Export</span>
+            </button>
+
             {role === "owner" && (
               <button
                 type="button"
