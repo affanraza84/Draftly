@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Edit3, Eye, FileText, Users } from "lucide-react";
+import { Edit3, Eye, FileText, Loader2, Upload, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { parseImportContent, validateImportFile } from "@/lib/document-import";
 
 type DocumentRow = {
   id: string;
@@ -47,6 +48,10 @@ export default function HomePage() {
   const [title, setTitle] = useState("Untitled document");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importFilename, setImportFilename] = useState("");
+  const [importError, setImportError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadDocuments = useCallback(async () => {
     setLoadingDocs(true);
@@ -289,6 +294,67 @@ export default function HomePage() {
     }
   }
 
+  async function handleFileImport(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file || !userId) return;
+
+    setImportError("");
+    setImportFilename(file.name);
+    setImporting(true);
+
+    try {
+      // 1. Validate file metadata before reading content
+      const validation = validateImportFile({
+        name: file.name,
+        size: file.size,
+      });
+
+      if (!validation.valid) {
+        setImportError(validation.error);
+        setImporting(false);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
+
+      // 2. Read file text
+      const rawContent = await file.text();
+
+      // 3. Parse and convert to Tiptap JSON schema
+      const parsed = parseImportContent(file.name, rawContent);
+      if (!parsed.success) {
+        setImportError(parsed.error);
+        setImporting(false);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
+
+      // 4. Create new document in Supabase with authenticated ownership
+      const { data, error } = await supabase
+        .from("documents")
+        .insert({
+          owner_id: userId,
+          title: parsed.title,
+          content_json: parsed.content_json,
+        })
+        .select("id")
+        .single();
+
+      if (error) {
+        setImportError(`Failed to save imported document: ${error.message}`);
+        setImporting(false);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
+
+      // 5. Navigate to the imported document
+      router.push(`/documents/${data.id}`);
+    } catch {
+      setImportError("An error occurred while reading the file. Please try again.");
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
   async function logout() {
     await supabase.auth.signOut();
     setUserId(null);
@@ -390,13 +456,64 @@ export default function HomePage() {
           />
 
           <button
-            disabled={busy}
+            disabled={busy || importing}
             onClick={() => void createDocument()}
             className="rounded-lg bg-black px-5 py-3 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
           >
             {busy ? "Creating..." : "New document"}
           </button>
         </div>
+
+        {/* Import Document Action */}
+        <div className="mt-4 pt-4 border-t border-zinc-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-medium text-zinc-800">
+              Import existing document
+            </p>
+            <p className="text-[11px] text-zinc-500">
+              Supported formats: .txt and .md (up to 1 MB)
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept=".txt,.md,.markdown"
+              onChange={(e) => void handleFileImport(e)}
+              className="hidden"
+              id="file-import-input"
+            />
+
+            <button
+              type="button"
+              disabled={busy || importing}
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-xs font-medium text-zinc-800 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {importing ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-zinc-600" />
+                  <span>Importing &ldquo;{importFilename}&rdquo;...</span>
+                </>
+              ) : (
+                <>
+                  <Upload className="h-3.5 w-3.5 text-zinc-600" />
+                  <span>Import File</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {importError && (
+          <div
+            role="alert"
+            className="mt-3 rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-700"
+          >
+            {importError}
+          </div>
+        )}
       </section>
 
       {/* My Documents Section */}

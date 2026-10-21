@@ -1,6 +1,34 @@
-# Draftly - Document Sharing & Access Control (Phase 3)
+# Draftly - Full-Stack Document Editor
 
 Draftly is a lightweight full-stack document editor built with Next.js App Router, Supabase PostgreSQL, Supabase Auth, Tailwind CSS, and Tiptap.
+
+---
+
+## Phase 4: TXT and Markdown Document Import
+
+Phase 4 adds client-side file upload and AST-based conversion for `.txt` and `.md` files directly into Draftly's Tiptap document format.
+
+### Features
+1. **Import File Action**:
+   - Located on the main dashboard within the "Create a document" section.
+   - Allows users to select `.txt` and `.md` (or `.markdown`) files.
+   - Enforces a maximum file size of 1 MB before reading content.
+   - Derives document title from the filename without extension (clamped to 120 characters).
+2. **Safe Conversion to Tiptap JSON**:
+   - **TXT**: Splits lines into native Tiptap paragraph blocks while preserving Unicode, blank lines, and whitespace without executing HTML.
+   - **Markdown**: Uses `marked` token AST (without rendering raw HTML) to generate typed Tiptap nodes:
+     - Headings (H1 to H6)
+     - Paragraphs
+     - Bulleted lists (`bulletList` > `listItem`)
+     - Numbered lists (`orderedList` > `listItem`)
+     - Bold (`strong`), Italic (`em`), and inline code (`code`) marks
+     - Blockquotes and code blocks
+3. **Reliability & Validation**:
+   - Validates file extension, size, and readable content.
+   - Rejects empty, whitespace-only, or oversized files with accessible error alerts.
+   - Does not silently create empty documents on failure.
+   - Resets the file picker on error so users can immediately retry or choose another file.
+   - On successful database insertion, navigates directly to `/documents/[id]`.
 
 ---
 
@@ -79,23 +107,25 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Automated Testing
 
-Automated tests are powered by Vitest and cover all highest-risk authorization scenarios and schema requirements:
+Automated tests are powered by Vitest and cover all highest-risk authorization scenarios, file import parsers, and schema requirements:
 
 ```bash
 npm test
 ```
 
-### Covered Test Cases:
-1. An owner can share a document with another user.
-2. A recipient can read a shared document.
-3. A viewer cannot update a shared document (RLS rejection).
-4. An editor can update a shared document.
-5. A recipient cannot share a document with a third user.
-6. A user without access cannot read a private document.
-7. Revoking a share removes the recipient's access immediately.
-8. Only the owner can delete a document.
-9. Preventing document owners from sharing with themselves.
-10. SQL migration schema, constraints, indexes, triggers, and RLS policy verification.
+### Covered Test Suites:
+1. **Document Import & Conversion (`tests/document-import.test.ts`)**:
+   - Valid `.txt` and `.md` file acceptance.
+   - Rejection of unsupported extensions (`.docx`, `.pdf`, `.js`).
+   - Rejection of oversized files (> 1 MB) and empty files.
+   - Title derivation and 120-character truncation.
+   - TXT paragraph conversion with Unicode and CRLF line ending normalization.
+   - Markdown headings (H1–H6), bullet lists, ordered lists, bold, italic, code, blockquotes, and code blocks.
+   - Rejection of whitespace-only files.
+2. **Sharing Authorization (`tests/sharing-authorization.test.ts`)**:
+   - Owner sharing, recipient reading, viewer update prevention, editor updates, recipient sharing rejection, non-collaborator denial, revocation, and owner-only deletion.
+3. **Database Schema & Policies (`tests/sql-policies.test.ts`)**:
+   - Migration tables, indexes, constraints, triggers, and RLS policies.
 
 ### Type & Lint Verification:
 ```bash
@@ -103,36 +133,3 @@ npm run lint
 npx tsc --noEmit
 npm run build
 ```
-
----
-
-## Manual Smoke Testing Procedure
-
-To manually test the end-to-end sharing workflow with two distinct user accounts:
-
-1. **User A (Owner) Setup**:
-   - Open [http://localhost:3000](http://localhost:3000) in Browser 1.
-   - Create an account: `alice@example.com` / `password123`.
-   - Create a new document: "Quarterly Strategy".
-   - Add rich-text content in the editor and click **Save**.
-
-2. **User B (Collaborator) Setup**:
-   - Open an Incognito/Private window (Browser 2).
-   - Create an account: `bob@example.com` / `password123`.
-   - Verify `bob@example.com` has an empty dashboard.
-
-3. **Share as Viewer**:
-   - In Alice's browser, open "Quarterly Strategy" and click **Share**.
-   - Enter `bob@example.com`, select **Viewer**, and click **Share**.
-   - In Bob's browser, refresh the dashboard.
-   - Verify "Quarterly Strategy" appears under **Shared with me** with a **Viewer** badge and Alice's email.
-   - Open the document as Bob: verify content is visible, but the title and editor are read-only, formatting toolbar is hidden, and no Save/Share buttons are present.
-
-4. **Promote to Editor**:
-   - In Alice's Share Dialog, change Bob's permission from **Viewer** to **Editor**.
-   - In Bob's browser, refresh: verify the role badge updates to **Editor**, editing is enabled, and the **Save** button is active.
-   - Bob modifies content and clicks **Save**: verify changes persist.
-
-5. **Revoke Access**:
-   - In Alice's Share Dialog, click the trash icon next to Bob's name to revoke access.
-   - In Bob's browser, refresh: verify the document is no longer listed under **Shared with me**, and direct navigation displays an unauthorized access message.
