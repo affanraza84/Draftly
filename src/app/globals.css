@@ -1,43 +1,138 @@
 @import "tailwindcss";
 
+@layer base {
+  :root {
+    --bg-primary: #FAFAF8;
+    --surface: #FFFFFF;
+    --text-primary: #171717;
+    --text-muted: #737373;
+    --border-subtle: #E5E5E5;
+    --accent: #5754D6;
+  }
+
+  body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+}
+
+/* Editorial Tiptap Canvas Typography */
 .draftly-editor .tiptap {
-  min-height: 360px;
+  min-height: 480px;
   outline: none;
-  line-height: 1.75;
-}
-
-.draftly-editor .tiptap h1 {
-  font-size: 2rem;
-  font-weight: 700;
-  margin: 1.25rem 0 0.75rem;
-}
-
-.draftly-editor .tiptap h2 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin: 1rem 0 0.5rem;
+  font-size: 1.0625rem;
+  line-height: 1.8;
+  color: #171717;
 }
 
 .draftly-editor .tiptap p {
-  margin: 0.5rem 0;
+  margin: 0.85rem 0;
+}
+
+.draftly-editor .tiptap h1 {
+  font-size: 2.15rem;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+  color: #111827;
+  margin: 2rem 0 0.85rem;
+}
+
+.draftly-editor .tiptap h2 {
+  font-size: 1.55rem;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.015em;
+  color: #1f2937;
+  margin: 1.6rem 0 0.65rem;
+}
+
+.draftly-editor .tiptap h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #374151;
+  margin: 1.35rem 0 0.5rem;
 }
 
 .draftly-editor .tiptap ul {
-  list-style: disc;
-  padding-left: 1.5rem;
+  list-style-type: disc;
+  padding-left: 1.6rem;
+  margin: 0.75rem 0;
 }
 
 .draftly-editor .tiptap ol {
-  list-style: decimal;
-  padding-left: 1.5rem;
+  list-style-type: decimal;
+  padding-left: 1.6rem;
+  margin: 0.75rem 0;
 }
 
 .draftly-editor .tiptap li {
-  margin: 0.25rem 0;
+  margin: 0.35rem 0;
+  padding-left: 0.25rem;
+}
+
+.draftly-editor .tiptap li p {
+  margin: 0;
 }
 
 .draftly-editor .tiptap blockquote {
-  border-left: 3px solid #d1d5db;
-  padding-left: 1rem;
-  margin: 1rem 0;
+  border-left: 3px solid #5754D6;
+  background-color: #F8F9FA;
+  padding: 0.75rem 1.25rem;
+  margin: 1.25rem 0;
+  font-style: italic;
+  color: #4b5563;
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+
+.draftly-editor .tiptap code {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.875em;
+  background-color: #F3F4F6;
+  color: #1f2937;
+  padding: 0.15rem 0.35rem;
+  border-radius: 0.25rem;
+}
+
+.draftly-editor .tiptap pre {
+  background-color: #18181B;
+  color: #F4F4F5;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.875rem;
+  padding: 1rem 1.25rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 1.25rem 0;
+}
+
+.draftly-editor .tiptap pre code {
+  background: none;
+  color: inherit;
+  padding: 0;
+}
+
+.draftly-editor .tiptap strong {
+  font-weight: 600;
+  color: #111827;
+}
+
+/* Custom scrollbar for modern subtle appearance */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #E5E5E5;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #D4D4D4;
 }

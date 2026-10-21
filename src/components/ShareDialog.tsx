@@ -1,11 +1,26 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Loader2, Share2, Trash2, X, Shield, UserCheck } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import {
+  Check,
+  Loader2,
+  Share2,
+  Shield,
+  Trash2,
+  X,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { lookupRecipientByEmail } from "@/app/actions/share";
 
-export type DocumentShareItem = {
+type ShareDialogProps = {
+  isOpen: boolean;
+  onClose: () => void;
+  documentId: string;
+  documentTitle: string;
+  currentUserId: string;
+};
+
+type DocumentShareItem = {
   id: string;
   document_id: string;
   shared_with_user_id: string;
@@ -14,14 +29,6 @@ export type DocumentShareItem = {
   recipient_email?: string;
 };
 
-interface ShareDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  documentId: string;
-  documentTitle: string;
-  currentUserId: string;
-}
-
 export function ShareDialog({
   isOpen,
   onClose,
@@ -29,12 +36,12 @@ export function ShareDialog({
   documentTitle,
   currentUserId,
 }: ShareDialogProps) {
-  const supabase = useMemo(() => createClient(), []);
+  const supabase = createClient();
 
-  const [shares, setShares] = useState<DocumentShareItem[]>([]);
-  const [loadingShares, setLoadingShares] = useState(true);
   const [emailInput, setEmailInput] = useState("");
   const [selectedPermission, setSelectedPermission] = useState<"viewer" | "editor">("viewer");
+  const [shares, setShares] = useState<DocumentShareItem[]>([]);
+  const [loadingShares, setLoadingShares] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [mutatingShareId, setMutatingShareId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
@@ -174,7 +181,6 @@ export function ShareDialog({
     };
   }, [isOpen, documentId, supabase]);
 
-  // Handle ESC key
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape" && isOpen) {
@@ -192,7 +198,7 @@ export function ShareDialog({
     const cleanEmail = emailInput.trim().toLowerCase();
 
     if (!cleanEmail) {
-      setErrorMessage("Please enter an email address to share with.");
+      setErrorMessage("Please enter an email address.");
       return;
     }
 
@@ -201,7 +207,6 @@ export function ShareDialog({
     setSuccessMessage("");
 
     try {
-      // 1. Look up recipient safely
       const lookupResult = await lookupRecipientByEmail(cleanEmail);
 
       if (!lookupResult.success) {
@@ -213,12 +218,11 @@ export function ShareDialog({
       const recipient = lookupResult.user;
 
       if (recipient.id === currentUserId) {
-        setErrorMessage("You cannot share a document with yourself.");
+        setErrorMessage("You are the owner of this document. You cannot share it with yourself.");
         setSubmitting(false);
         return;
       }
 
-      // 2. Check for duplicate share locally before hitting database
       const alreadyShared = shares.some(
         (s) => s.shared_with_user_id === recipient.id
       );
@@ -229,7 +233,6 @@ export function ShareDialog({
         return;
       }
 
-      // 3. Insert into document_shares
       const { error: insertError } = await supabase
         .from("document_shares")
         .insert({
@@ -318,28 +321,30 @@ export function ShareDialog({
       role="dialog"
       aria-modal="true"
       aria-labelledby="share-dialog-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs"
       onClick={(e) => {
         if (e.target === e.currentTarget && !submitting && !mutatingShareId) {
           onClose();
         }
       }}
     >
-      <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-zinc-900 dark:border dark:border-zinc-800">
+      <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl border border-[#E5E5E5] text-[#171717]">
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 border-b pb-4 dark:border-zinc-800">
+        <div className="flex items-start justify-between gap-4 border-b border-[#E5E5E5] pb-4">
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100">
-              <Share2 className="h-5 w-5 shrink-0 text-zinc-700 dark:text-zinc-300" />
+            <div className="flex items-center gap-2">
+              <div className="h-7 w-7 rounded-lg bg-[#5754D6]/10 flex items-center justify-center text-[#5754D6] shrink-0">
+                <Share2 className="h-4 w-4" />
+              </div>
               <h2
                 id="share-dialog-title"
-                className="truncate text-lg font-semibold"
+                className="truncate text-base font-semibold text-[#171717]"
               >
                 Share &ldquo;{documentTitle || "Untitled document"}&rdquo;
               </h2>
             </div>
-            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-              Manage who has access to view or edit this document.
+            <p className="mt-1 text-xs text-[#737373]">
+              Manage collaborator permissions or invite new team members.
             </p>
           </div>
 
@@ -348,31 +353,31 @@ export function ShareDialog({
             onClick={onClose}
             disabled={submitting || mutatingShareId !== null}
             aria-label="Close dialog"
-            className="rounded-lg p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 disabled:opacity-50 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+            className="rounded-lg p-1 text-[#737373] hover:bg-[#FAFAF8] hover:text-[#171717] disabled:opacity-50 transition"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Add Share Form */}
-        <form onSubmit={handleAddShare} className="mt-5 space-y-3">
+        <form onSubmit={handleAddShare} className="mt-5 space-y-2">
           <label
             htmlFor="recipient-email"
-            className="block text-xs font-semibold tracking-wide uppercase text-zinc-600 dark:text-zinc-400"
+            className="block text-xs font-semibold text-[#171717]"
           >
-            Add collaborator by email
+            Invite collaborator
           </label>
 
           <div className="flex flex-col gap-2 sm:flex-row">
             <input
               id="recipient-email"
               type="email"
-              placeholder="user@example.com"
+              placeholder="colleague@company.com"
               value={emailInput}
               onChange={(e) => setEmailInput(e.target.value)}
               disabled={submitting || mutatingShareId !== null}
               required
-              className="flex-1 rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 outline-none transition focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-zinc-400 dark:focus:ring-zinc-400"
+              className="flex-1 rounded-lg border border-[#E5E5E5] bg-white px-3.5 py-2 text-xs text-[#171717] placeholder:text-[#A3A3A3] outline-none transition focus:border-[#5754D6] focus:ring-1 focus:ring-[#5754D6] disabled:opacity-60"
             />
 
             <div className="flex gap-2">
@@ -383,7 +388,7 @@ export function ShareDialog({
                 }
                 disabled={submitting || mutatingShareId !== null}
                 aria-label="Permission level"
-                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-zinc-900 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                className="rounded-lg border border-[#E5E5E5] bg-white px-3 py-2 text-xs text-[#171717] outline-none transition focus:border-[#5754D6] disabled:opacity-60 cursor-pointer"
               >
                 <option value="viewer">Viewer</option>
                 <option value="editor">Editor</option>
@@ -392,15 +397,15 @@ export function ShareDialog({
               <button
                 type="submit"
                 disabled={submitting || mutatingShareId !== null}
-                className="flex items-center gap-1.5 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                className="flex items-center gap-1.5 rounded-lg bg-[#5754D6] px-4 py-2 text-xs font-medium text-white shadow-xs transition hover:bg-[#4845C4] disabled:opacity-50 shrink-0"
               >
                 {submitting ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Sharing...</span>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Adding...</span>
                   </>
                 ) : (
-                  <span>Share</span>
+                  <span>Invite</span>
                 )}
               </button>
             </div>
@@ -411,7 +416,7 @@ export function ShareDialog({
         {errorMessage && (
           <div
             role="alert"
-            className="mt-3 rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400"
+            className="mt-3 rounded-lg border border-red-200 bg-[#FEF2F2] p-2.5 text-xs text-[#B91C1C]"
           >
             {errorMessage}
           </div>
@@ -420,50 +425,50 @@ export function ShareDialog({
         {successMessage && (
           <div
             role="status"
-            className="mt-3 flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 p-2.5 text-xs text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-400"
+            className="mt-3 flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-[#F0FDF4] p-2.5 text-xs text-[#15803D]"
           >
-            <UserCheck className="h-3.5 w-3.5 shrink-0" />
+            <Check className="h-3.5 w-3.5 shrink-0" />
             <span>{successMessage}</span>
           </div>
         )}
 
         {/* Existing Shares List */}
         <div className="mt-6">
-          <h3 className="text-xs font-semibold tracking-wide uppercase text-zinc-600 dark:text-zinc-400">
+          <h3 className="text-xs font-semibold text-[#171717] mb-2">
             People with access
           </h3>
 
-          <div className="mt-2 max-h-60 overflow-y-auto rounded-xl border border-zinc-200 divide-y divide-zinc-200 dark:border-zinc-800 dark:divide-zinc-800">
+          <div className="max-h-60 overflow-y-auto rounded-xl border border-[#E5E5E5] divide-y divide-[#E5E5E5]">
             {/* Owner Row */}
-            <div className="flex items-center justify-between p-3 text-sm">
+            <div className="flex items-center justify-between p-3 text-xs bg-[#FAFAF8]">
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-100 text-xs font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#E5E5E5] text-xs font-semibold text-[#171717]">
                   You
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-xs font-medium text-zinc-900 dark:text-zinc-100">
-                    Owner
+                  <p className="truncate text-xs font-medium text-[#171717]">
+                    Owner (You)
                   </p>
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                    Full control
+                  <p className="text-[11px] text-[#737373]">
+                    Full administrative control
                   </p>
                 </div>
               </div>
-              <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                <Shield className="h-3 w-3" />
+              <span className="inline-flex items-center gap-1 rounded-md bg-white border border-[#E5E5E5] px-2 py-0.5 text-[11px] font-medium text-[#737373]">
+                <Shield className="h-3 w-3 text-[#5754D6]" />
                 Owner
               </span>
             </div>
 
             {/* Recipient Rows */}
             {loadingShares ? (
-              <div className="flex items-center justify-center p-6 text-xs text-zinc-500">
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <div className="flex items-center justify-center p-6 text-xs text-[#737373]">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin text-[#5754D6]" />
                 Loading collaborators...
               </div>
             ) : shares.length === 0 ? (
-              <div className="p-6 text-center text-xs text-zinc-500 dark:text-zinc-400">
-                No users have access to this document yet. Add collaborators above to share.
+              <div className="p-6 text-center text-xs text-[#737373]">
+                No external collaborators. Invite team members above to start sharing.
               </div>
             ) : (
               shares.map((share) => {
@@ -473,23 +478,23 @@ export function ShareDialog({
                 return (
                   <div
                     key={share.id}
-                    className="flex items-center justify-between gap-3 p-3 text-sm"
+                    className="flex items-center justify-between gap-3 p-3 text-xs bg-white hover:bg-[#FAFAF8] transition"
                   >
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-50 text-xs font-semibold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#5754D6]/10 text-xs font-semibold text-[#5754D6]">
                         {recipientDisplay[0]?.toUpperCase() || "U"}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-medium text-zinc-900 dark:text-zinc-100">
+                        <p className="truncate text-xs font-medium text-[#171717]">
                           {recipientDisplay}
                         </p>
-                        <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                          Shared {new Date(share.created_at).toLocaleDateString()}
+                        <p className="text-[11px] text-[#737373]">
+                          Added {new Date(share.created_at).toLocaleDateString()}
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                       <select
                         value={share.permission}
                         disabled={isMutating || submitting}
@@ -500,7 +505,7 @@ export function ShareDialog({
                           )
                         }
                         aria-label={`Permission for ${recipientDisplay}`}
-                        className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-800 outline-none transition hover:border-zinc-400 focus:border-zinc-900 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
+                        className="rounded-lg border border-[#E5E5E5] bg-white px-2 py-1 text-xs text-[#171717] outline-none transition hover:border-[#D4D4D4] focus:border-[#5754D6] disabled:opacity-50 cursor-pointer"
                       >
                         <option value="viewer">Viewer</option>
                         <option value="editor">Editor</option>
@@ -514,12 +519,12 @@ export function ShareDialog({
                         }
                         title="Revoke access"
                         aria-label={`Revoke access for ${recipientDisplay}`}
-                        className="rounded-lg p-1.5 text-zinc-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+                        className="rounded-lg p-1.5 text-[#737373] transition hover:bg-[#FEF2F2] hover:text-[#B91C1C] disabled:opacity-50"
                       >
                         {isMutating ? (
-                          <Loader2 className="h-4 w-4 animate-spin text-zinc-500" />
+                          <Loader2 className="h-3.5 w-3.5 animate-spin text-[#737373]" />
                         ) : (
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3.5 w-3.5" />
                         )}
                       </button>
                     </div>
@@ -531,12 +536,12 @@ export function ShareDialog({
         </div>
 
         {/* Footer */}
-        <div className="mt-6 flex justify-end">
+        <div className="mt-6 flex justify-end border-t border-[#E5E5E5] pt-4">
           <button
             type="button"
             onClick={onClose}
             disabled={submitting || mutatingShareId !== null}
-            className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+            className="rounded-lg border border-[#E5E5E5] bg-white px-4 py-1.5 text-xs font-medium text-[#171717] hover:bg-[#FAFAF8] transition disabled:opacity-50 shadow-xs"
           >
             Done
           </button>

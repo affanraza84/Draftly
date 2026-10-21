@@ -6,7 +6,26 @@ import { useParams, useRouter } from "next/navigation";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
-import { Edit3, Eye, Share2, Shield, Trash2 } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowLeft,
+  Bold,
+  Check,
+  ChevronLeft,
+  Edit3,
+  Eye,
+  Italic,
+  List,
+  ListOrdered,
+  Loader2,
+  Redo,
+  Save,
+  Share2,
+  Shield,
+  Trash2,
+  Underline as UnderlineIcon,
+  Undo,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { ShareDialog } from "@/components/ShareDialog";
 
@@ -56,7 +75,6 @@ function DocumentEditorContent() {
     async function loadDocument() {
       setMessage("Loading document...");
 
-      // 1. Get current authenticated user
       const {
         data: { user },
         error: userError,
@@ -71,7 +89,6 @@ function DocumentEditorContent() {
 
       setCurrentUserId(user.id);
 
-      // 2. Fetch the document (protected by RLS)
       const { data, error } = await supabase
         .from("documents")
         .select("id, owner_id, title, content_json")
@@ -89,12 +106,10 @@ function DocumentEditorContent() {
 
       const doc = data as DocumentRecord;
 
-      // 3. Determine user role
       if (doc.owner_id === user.id) {
         setRole("owner");
         editor?.setEditable(true);
       } else {
-        // Query user's share permission
         const { data: shareData } = await supabase
           .from("document_shares")
           .select("permission")
@@ -157,7 +172,6 @@ function DocumentEditorContent() {
         .select("id");
 
       if (error) {
-        // If RLS rejects or access was revoked
         if (
           error.code === "42501" ||
           error.message.toLowerCase().includes("permission")
@@ -169,7 +183,6 @@ function DocumentEditorContent() {
         return;
       }
 
-      // If RLS filtered the update (e.g. permission revoked while editor was open)
       if (!updatedRows || updatedRows.length === 0) {
         setMessage(
           "Save failed: You no longer have permission to edit this document or it was deleted."
@@ -186,7 +199,6 @@ function DocumentEditorContent() {
     }
   }, [canEdit, documentId, editor, loaded, saving, supabase, title]);
 
-  // Protect against accidental navigation/tab closing with unsaved changes
   useEffect(() => {
     function handleBeforeUnload(e: BeforeUnloadEvent) {
       if (dirty) {
@@ -230,137 +242,153 @@ function DocumentEditorContent() {
 
   if (!editor || !loaded) {
     return (
-      <main className="mx-auto max-w-4xl p-8">
-        <Link href="/" className="text-sm underline">
-          ← Back to documents
-        </Link>
-        <p role="status" className="mt-6 text-sm text-gray-600">
-          {message || "Initializing editor..."}
-        </p>
+      <main className="min-h-screen bg-[#FAFAF8] flex items-center justify-center p-8">
+        <div className="w-full max-w-md rounded-2xl bg-white border border-[#E5E5E5] p-8 text-center shadow-xs">
+          <Loader2 className="mx-auto h-7 w-7 animate-spin text-[#5754D6]" />
+          <h2 className="mt-4 text-base font-semibold text-[#171717]">Opening Document</h2>
+          <p role="status" className="mt-1 text-xs text-[#737373]">
+            {message || "Retrieving content and permissions..."}
+          </p>
+          <div className="mt-6 pt-4 border-t border-[#E5E5E5]">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-[#737373] hover:text-[#171717]"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span>Back to Documents</span>
+            </Link>
+          </div>
+        </div>
       </main>
     );
   }
 
   return (
-    <main className="mx-auto max-w-4xl p-6 sm:p-8">
-      {/* Header */}
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Link href="/" className="text-sm text-gray-600 hover:underline">
-            ← All documents
-          </Link>
-
-          {/* Role Badge */}
-          {role === "owner" && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-800">
-              <Shield className="h-3 w-3" />
-              Owner
-            </span>
-          )}
-          {role === "editor" && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
-              <Edit3 className="h-3 w-3" />
-              Editor
-            </span>
-          )}
-          {role === "viewer" && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">
-              <Eye className="h-3 w-3" />
-              Viewer (Read Only)
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* Share Button (Owner Only) */}
-          {role === "owner" && (
-            <button
-              type="button"
-              onClick={() => setShareOpen(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
+    <div className="min-h-screen bg-[#FAFAF8] flex flex-col text-[#171717]">
+      {/* Sticky Header Navigation */}
+      <header className="sticky top-0 z-30 border-b border-[#E5E5E5] bg-white/95 backdrop-blur-xs px-4 sm:px-6 py-2.5 transition">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
+          {/* Left: Back Link & Role */}
+          <div className="flex items-center gap-3 min-w-0">
+            <Link
+              href="/"
+              className="flex items-center gap-1 text-xs font-medium text-[#737373] hover:text-[#171717] px-2 py-1 rounded-md hover:bg-[#FAFAF8] transition shrink-0"
+              title="Return to Workspace"
             >
-              <Share2 className="h-4 w-4" />
-              <span>Share</span>
-            </button>
-          )}
+              <ChevronLeft className="h-4 w-4" />
+              <span className="hidden sm:inline">Workspace</span>
+            </Link>
 
-          {/* Delete Button (Owner Only) */}
-          {role === "owner" && (
-            <button
-              type="button"
-              onClick={() => void deleteDocument()}
-              disabled={deleting}
-              className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3.5 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
-              title="Delete document"
-            >
-              <Trash2 className="h-4 w-4" />
-              <span>{deleting ? "Deleting..." : "Delete"}</span>
-            </button>
-          )}
+            <span className="h-3.5 w-[1px] bg-[#E5E5E5] hidden sm:block shrink-0" />
 
-          {/* Save Button (Owner or Editor) */}
-          {canEdit ? (
-            <button
-              type="button"
-              onClick={() => void saveDocument()}
-              disabled={saving || !dirty}
-              className="rounded-lg bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
-            >
-              {saving ? "Saving..." : "Save"}
-            </button>
-          ) : (
-            <span className="text-xs text-zinc-400">
-              Read-only mode
-            </span>
-          )}
+            {/* Role Badge */}
+            {role === "owner" && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-[#FAFAF8] border border-[#E5E5E5] px-2 py-0.5 text-[11px] font-medium text-[#171717] shrink-0">
+                <Shield className="h-3 w-3 text-[#5754D6]" />
+                Owner
+              </span>
+            )}
+            {role === "editor" && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-[#EFF6FF] border border-[#BFDBFE] px-2 py-0.5 text-[11px] font-medium text-[#1D4ED8] shrink-0">
+                <Edit3 className="h-3 w-3" />
+                Editor
+              </span>
+            )}
+            {role === "viewer" && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-[#FEF3C7] border border-[#FDE68A] px-2 py-0.5 text-[11px] font-medium text-[#B45309] shrink-0">
+                <Eye className="h-3 w-3" />
+                View Only
+              </span>
+            )}
+
+            {/* Save Status Badge */}
+            <div className="flex items-center gap-1.5 text-xs text-[#737373] shrink-0 pl-1">
+              {saving ? (
+                <span className="flex items-center gap-1 text-xs text-[#5754D6]">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span className="hidden sm:inline">Saving...</span>
+                </span>
+              ) : dirty && canEdit ? (
+                <span className="flex items-center gap-1 text-xs text-[#B45309]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#D97706]" />
+                  <span className="hidden sm:inline">Unsaved changes</span>
+                </span>
+              ) : message.includes("failed") ? (
+                <span className="flex items-center gap-1 text-xs text-[#B91C1C]">
+                  <AlertCircle className="h-3 w-3" />
+                  <span className="hidden sm:inline">Save failed</span>
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-xs text-[#15803d]">
+                  <Check className="h-3 w-3" />
+                  <span className="hidden sm:inline">Saved</span>
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Right: Actions */}
+          <div className="flex items-center gap-2 shrink-0">
+            {role === "owner" && (
+              <button
+                type="button"
+                onClick={() => setShareOpen(true)}
+                className="flex items-center gap-1.5 rounded-lg border border-[#E5E5E5] bg-white px-3 py-1.5 text-xs font-medium text-[#171717] hover:bg-[#FAFAF8] shadow-xs transition"
+              >
+                <Share2 className="h-3.5 w-3.5 text-[#5754D6]" />
+                <span>Share</span>
+              </button>
+            )}
+
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => void saveDocument()}
+                disabled={saving || !dirty}
+                className="flex items-center gap-1.5 rounded-lg bg-[#5754D6] px-3.5 py-1.5 text-xs font-medium text-white shadow-xs transition hover:bg-[#4845C4] disabled:opacity-50"
+              >
+                <Save className="h-3.5 w-3.5" />
+                <span>{saving ? "Saving..." : "Save"}</span>
+              </button>
+            )}
+
+            {role === "owner" && (
+              <button
+                type="button"
+                onClick={() => void deleteDocument()}
+                disabled={deleting}
+                className="p-1.5 rounded-lg border border-[#E5E5E5] text-[#737373] hover:text-[#B91C1C] hover:bg-[#FEF2F2] hover:border-red-200 transition disabled:opacity-50"
+                title="Delete document"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
-      {/* Title Input */}
-      <section className="mt-6">
-        <label
-          htmlFor="document-title"
-          className="mb-2 block text-sm font-medium"
-        >
-          Document title
-        </label>
-
-        <input
-          id="document-title"
-          value={title}
-          readOnly={!canEdit}
-          disabled={!canEdit}
-          onChange={(event) => {
-            if (!canEdit) return;
-            setTitle(event.target.value);
-            setDirty(true);
-            setMessage("Unsaved changes");
-          }}
-          maxLength={120}
-          className={`w-full border-0 border-b bg-transparent py-3 text-3xl font-bold outline-none transition ${
-            canEdit
-              ? "focus:border-black"
-              : "cursor-not-allowed text-zinc-600 border-zinc-200"
-          }`}
-        />
-      </section>
-
-      {/* Editor & Formatting */}
-      <section className="mt-6 rounded-xl border">
-        {canEdit && (
+      {/* Formatting Toolbar */}
+      {canEdit && (
+        <div className="sticky top-[49px] z-20 border-b border-[#E5E5E5] bg-[#FAFAF8] px-4 py-1.5">
           <div
             role="toolbar"
             aria-label="Text formatting"
-            className="flex flex-wrap gap-2 border-b p-3"
+            className="max-w-4xl mx-auto flex items-center justify-center gap-1 flex-wrap text-xs text-[#171717]"
           >
+            {/* Inline Formatting */}
             <button
               type="button"
               aria-label="Bold"
               aria-pressed={editor.isActive("bold")}
               onClick={() => editor.chain().focus().toggleBold().run()}
-              className="rounded border px-3 py-2 font-bold"
+              className={`p-1.5 rounded-md transition ${
+                editor.isActive("bold")
+                  ? "bg-[#5754D6]/10 text-[#5754D6] font-bold"
+                  : "hover:bg-white text-[#737373] hover:text-[#171717]"
+              }`}
+              title="Bold (Ctrl+B)"
             >
-              B
+              <Bold className="h-3.5 w-3.5" />
             </button>
 
             <button
@@ -368,9 +396,14 @@ function DocumentEditorContent() {
               aria-label="Italic"
               aria-pressed={editor.isActive("italic")}
               onClick={() => editor.chain().focus().toggleItalic().run()}
-              className="rounded border px-3 py-2 italic"
+              className={`p-1.5 rounded-md transition ${
+                editor.isActive("italic")
+                  ? "bg-[#5754D6]/10 text-[#5754D6]"
+                  : "hover:bg-white text-[#737373] hover:text-[#171717]"
+              }`}
+              title="Italic (Ctrl+I)"
             >
-              I
+              <Italic className="h-3.5 w-3.5" />
             </button>
 
             <button
@@ -378,67 +411,177 @@ function DocumentEditorContent() {
               aria-label="Underline"
               aria-pressed={editor.isActive("underline")}
               onClick={() => editor.chain().focus().toggleUnderline().run()}
-              className="rounded border px-3 py-2 underline"
+              className={`p-1.5 rounded-md transition ${
+                editor.isActive("underline")
+                  ? "bg-[#5754D6]/10 text-[#5754D6]"
+                  : "hover:bg-white text-[#737373] hover:text-[#171717]"
+              }`}
+              title="Underline (Ctrl+U)"
             >
-              U
+              <UnderlineIcon className="h-3.5 w-3.5" />
             </button>
 
+            <span className="h-4 w-[1px] bg-[#E5E5E5] mx-1" />
+
+            {/* Headings */}
             <button
               type="button"
-              onClick={() =>
-                editor.chain().focus().toggleHeading({ level: 1 }).run()
-              }
-              className="rounded border px-3 py-2"
+              aria-label="Heading 1"
+              aria-pressed={editor.isActive("heading", { level: 1 })}
+              onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+              className={`px-2 py-1 rounded-md text-xs font-semibold transition ${
+                editor.isActive("heading", { level: 1 })
+                  ? "bg-[#5754D6]/10 text-[#5754D6]"
+                  : "hover:bg-white text-[#737373] hover:text-[#171717]"
+              }`}
+              title="Heading 1"
             >
               H1
             </button>
 
             <button
               type="button"
-              onClick={() =>
-                editor.chain().focus().toggleHeading({ level: 2 }).run()
-              }
-              className="rounded border px-3 py-2"
+              aria-label="Heading 2"
+              aria-pressed={editor.isActive("heading", { level: 2 })}
+              onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+              className={`px-2 py-1 rounded-md text-xs font-semibold transition ${
+                editor.isActive("heading", { level: 2 })
+                  ? "bg-[#5754D6]/10 text-[#5754D6]"
+                  : "hover:bg-white text-[#737373] hover:text-[#171717]"
+              }`}
+              title="Heading 2"
             >
               H2
             </button>
 
             <button
               type="button"
-              onClick={() => editor.chain().focus().toggleBulletList().run()}
-              className="rounded border px-3 py-2"
+              aria-label="Heading 3"
+              aria-pressed={editor.isActive("heading", { level: 3 })}
+              onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+              className={`px-2 py-1 rounded-md text-xs font-semibold transition ${
+                editor.isActive("heading", { level: 3 })
+                  ? "bg-[#5754D6]/10 text-[#5754D6]"
+                  : "hover:bg-white text-[#737373] hover:text-[#171717]"
+              }`}
+              title="Heading 3"
             >
-              • List
+              H3
+            </button>
+
+            <span className="h-4 w-[1px] bg-[#E5E5E5] mx-1" />
+
+            {/* Lists */}
+            <button
+              type="button"
+              aria-label="Bullet list"
+              aria-pressed={editor.isActive("bulletList")}
+              onClick={() => editor.chain().focus().toggleBulletList().run()}
+              className={`p-1.5 rounded-md transition ${
+                editor.isActive("bulletList")
+                  ? "bg-[#5754D6]/10 text-[#5754D6]"
+                  : "hover:bg-white text-[#737373] hover:text-[#171717]"
+              }`}
+              title="Bulleted List"
+            >
+              <List className="h-3.5 w-3.5" />
             </button>
 
             <button
               type="button"
+              aria-label="Ordered list"
+              aria-pressed={editor.isActive("orderedList")}
               onClick={() => editor.chain().focus().toggleOrderedList().run()}
-              className="rounded border px-3 py-2"
+              className={`p-1.5 rounded-md transition ${
+                editor.isActive("orderedList")
+                  ? "bg-[#5754D6]/10 text-[#5754D6]"
+                  : "hover:bg-white text-[#737373] hover:text-[#171717]"
+              }`}
+              title="Numbered List"
             >
-              1. List
+              <ListOrdered className="h-3.5 w-3.5" />
+            </button>
+
+            <span className="h-4 w-[1px] bg-[#E5E5E5] mx-1" />
+
+            {/* Undo / Redo */}
+            <button
+              type="button"
+              aria-label="Undo"
+              disabled={!editor.can().undo()}
+              onClick={() => editor.chain().focus().undo().run()}
+              className="p-1.5 rounded-md text-[#737373] hover:text-[#171717] hover:bg-white transition disabled:opacity-30"
+              title="Undo"
+            >
+              <Undo className="h-3.5 w-3.5" />
+            </button>
+
+            <button
+              type="button"
+              aria-label="Redo"
+              disabled={!editor.can().redo()}
+              onClick={() => editor.chain().focus().redo().run()}
+              className="p-1.5 rounded-md text-[#737373] hover:text-[#171717] hover:bg-white transition disabled:opacity-30"
+              title="Redo"
+            >
+              <Redo className="h-3.5 w-3.5" />
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Main Centered Writing Surface */}
+      <main className="flex-1 max-w-[840px] w-full mx-auto px-4 py-8 sm:py-12">
+        <div className="bg-white rounded-2xl border border-[#E5E5E5] p-6 sm:p-14 lg:p-16 shadow-xs min-h-[750px]">
+          {/* Read-Only Banner if Viewer */}
+          {!canEdit && (
+            <div className="mb-6 rounded-lg bg-[#FEF3C7] border border-[#FDE68A] p-3 text-xs text-[#B45309] flex items-center gap-2">
+              <Eye className="h-4 w-4 shrink-0" />
+              <span>You have view-only access to this document. Editing is disabled.</span>
+            </div>
+          )}
+
+          {/* Document Title Input */}
+          <div className="mb-6">
+            <input
+              id="document-title"
+              value={title}
+              readOnly={!canEdit}
+              disabled={!canEdit}
+              onChange={(event) => {
+                if (!canEdit) return;
+                setTitle(event.target.value);
+                setDirty(true);
+                setMessage("Unsaved changes");
+              }}
+              maxLength={120}
+              placeholder="Untitled Document"
+              aria-label="Document Title"
+              className={`w-full text-2xl sm:text-4xl font-bold tracking-tight text-[#171717] bg-transparent outline-none border-b transition pb-2 ${
+                canEdit
+                  ? "border-transparent focus:border-[#E5E5E5] hover:border-[#F0F0EE]"
+                  : "border-transparent cursor-not-allowed opacity-90"
+              }`}
+            />
+          </div>
+
+          {/* Tiptap Editor Canvas */}
+          <EditorContent
+            editor={editor}
+            className="draftly-editor focus:outline-none"
+          />
+        </div>
+
+        {/* Bottom Error / Message Banner */}
+        {message && message !== "All changes saved" && message !== "Unsaved changes" && (
+          <div
+            role="status"
+            className="mt-4 rounded-lg border border-red-200 bg-[#FEF2F2] p-3 text-xs text-[#B91C1C]"
+          >
+            {message}
+          </div>
         )}
-
-        <EditorContent
-          editor={editor}
-          className="draftly-editor min-h-[400px] p-6"
-        />
-      </section>
-
-      {/* Status Bar */}
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <p role="status" className="text-sm text-gray-500">
-          {message}
-        </p>
-
-        {dirty && canEdit && (
-          <span className="text-xs text-amber-700">
-            Unsaved changes
-          </span>
-        )}
-      </div>
+      </main>
 
       {/* Share Dialog */}
       {role === "owner" && (
@@ -450,7 +593,7 @@ function DocumentEditorContent() {
           currentUserId={currentUserId}
         />
       )}
-    </main>
+    </div>
   );
 }
 
@@ -458,10 +601,13 @@ export default function DocumentEditorPage() {
   return (
     <Suspense
       fallback={
-        <main className="mx-auto max-w-4xl p-8">
-          <p role="status" className="text-sm text-gray-600">
-            Loading document...
-          </p>
+        <main className="min-h-screen bg-[#FAFAF8] flex items-center justify-center p-8">
+          <div className="w-full max-w-md rounded-2xl bg-white border border-[#E5E5E5] p-8 text-center shadow-xs">
+            <Loader2 className="mx-auto h-7 w-7 animate-spin text-[#5754D6]" />
+            <p role="status" className="mt-3 text-xs text-[#737373]">
+              Loading document...
+            </p>
+          </div>
         </main>
       }
     >
