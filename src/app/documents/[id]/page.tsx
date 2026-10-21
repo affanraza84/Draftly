@@ -2,11 +2,11 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
-import { Edit3, Eye, Share2, Shield } from "lucide-react";
+import { Edit3, Eye, Share2, Shield, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { ShareDialog } from "@/components/ShareDialog";
 
@@ -20,6 +20,7 @@ type DocumentRecord = {
 type DocumentRole = "owner" | "editor" | "viewer";
 
 function DocumentEditorContent() {
+  const router = useRouter();
   const params = useParams<{ id: string }>();
   const documentId = params.id;
   const supabase = useMemo(() => createClient(), []);
@@ -30,6 +31,7 @@ function DocumentEditorContent() {
   const [loaded, setLoaded] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [message, setMessage] = useState("");
   const [shareOpen, setShareOpen] = useState(false);
 
@@ -170,6 +172,37 @@ function DocumentEditorContent() {
     }
   }, [canEdit, documentId, editor, loaded, saving, supabase, title]);
 
+  const deleteDocument = useCallback(async () => {
+    if (role !== "owner" || deleting) return;
+
+    if (
+      !window.confirm(
+        "Are you sure you want to delete this document? This action cannot be undone."
+      )
+    ) {
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("documents")
+        .delete()
+        .eq("id", documentId);
+
+      if (error) {
+        setMessage(`Delete failed: ${error.message}`);
+        setDeleting(false);
+        return;
+      }
+
+      router.push("/");
+    } catch {
+      setMessage("Delete failed. Check your connection and try again.");
+      setDeleting(false);
+    }
+  }, [deleting, documentId, role, router, supabase]);
+
   if (!editor || !loaded) {
     return (
       <main className="mx-auto max-w-4xl p-8">
@@ -223,6 +256,20 @@ function DocumentEditorContent() {
             >
               <Share2 className="h-4 w-4" />
               <span>Share</span>
+            </button>
+          )}
+
+          {/* Delete Button (Owner Only) */}
+          {role === "owner" && (
+            <button
+              type="button"
+              onClick={() => void deleteDocument()}
+              disabled={deleting}
+              className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3.5 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+              title="Delete document"
+            >
+              <Trash2 className="h-4 w-4" />
+              <span>{deleting ? "Deleting..." : "Delete"}</span>
             </button>
           )}
 
