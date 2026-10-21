@@ -90,6 +90,28 @@ export default function HomePage() {
   const [importError, setImportError] = useState("");
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const importCancelledRef = useRef(false);
+
+  const handleCancelImport = useCallback(() => {
+    importCancelledRef.current = true;
+    setImporting(false);
+    setImportFilename("");
+    setImportError("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    setImportModalOpen(false);
+  }, []);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape" && importModalOpen) {
+        handleCancelImport();
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [importModalOpen, handleCancelImport]);
 
   const loadDocuments = useCallback(async () => {
     setLoadingDocs(true);
@@ -403,6 +425,7 @@ export default function HomePage() {
   async function handleFileProcess(file: File) {
     if (!userId) return;
 
+    importCancelledRef.current = false;
     setImportError("");
     setImportFilename(file.name);
     setImporting(true);
@@ -414,6 +437,7 @@ export default function HomePage() {
       });
 
       if (!validation.valid) {
+        if (importCancelledRef.current) return;
         setImportError(validation.error);
         setImporting(false);
         if (fileInputRef.current) fileInputRef.current.value = "";
@@ -421,7 +445,10 @@ export default function HomePage() {
       }
 
       const rawContent = await file.text();
+      if (importCancelledRef.current) return;
+
       const parsed = parseImportContent(file.name, rawContent);
+      if (importCancelledRef.current) return;
 
       if (!parsed.success) {
         setImportError(parsed.error);
@@ -440,6 +467,13 @@ export default function HomePage() {
         .select("id")
         .single();
 
+      if (importCancelledRef.current) {
+        if (data?.id) {
+          void supabase.from("documents").delete().eq("id", data.id);
+        }
+        return;
+      }
+
       if (error) {
         setImportError(`Failed to save imported document: ${error.message}`);
         setImporting(false);
@@ -447,11 +481,15 @@ export default function HomePage() {
         return;
       }
 
+      setImportModalOpen(false);
+      setImporting(false);
       router.push(`/documents/${data.id}`);
     } catch {
-      setImportError("An error occurred while reading the file. Please try again.");
-      setImporting(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      if (!importCancelledRef.current) {
+        setImportError("An error occurred while reading the file. Please try again.");
+        setImporting(false);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }
     }
   }
 
@@ -1141,8 +1179,8 @@ export default function HomePage() {
           aria-labelledby="import-modal-title"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs"
           onClick={(e) => {
-            if (e.target === e.currentTarget && !importing) {
-              setImportModalOpen(false);
+            if (e.target === e.currentTarget) {
+              handleCancelImport();
             }
           }}
         >
@@ -1164,9 +1202,9 @@ export default function HomePage() {
 
               <button
                 type="button"
-                onClick={() => setImportModalOpen(false)}
-                disabled={importing}
-                className="text-[#737373] hover:text-[#171717] cursor-pointer"
+                onClick={handleCancelImport}
+                aria-label="Cancel and close import"
+                className="rounded-lg p-1 text-[#737373] hover:text-[#171717] hover:bg-[#FAFAF8] transition cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1254,9 +1292,8 @@ export default function HomePage() {
             <div className="mt-5 flex justify-end gap-2 border-t border-[#E5E5E5] pt-4">
               <button
                 type="button"
-                onClick={() => setImportModalOpen(false)}
-                disabled={importing}
-                className="rounded-lg border border-[#E5E5E5] px-4 py-2 text-xs font-medium text-[#171717] hover:bg-[#FAFAF8] transition cursor-pointer"
+                onClick={handleCancelImport}
+                className="rounded-lg border border-[#E5E5E5] bg-white px-4 py-2 text-xs font-medium text-[#171717] hover:bg-[#FAFAF8] transition cursor-pointer shadow-xs"
               >
                 Cancel
               </button>
