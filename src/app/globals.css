@@ -1,26 +1,43 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+.draftly-editor .tiptap {
+  min-height: 360px;
+  outline: none;
+  line-height: 1.75;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+.draftly-editor .tiptap h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 1.25rem 0 0.75rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.draftly-editor .tiptap h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 1rem 0 0.5rem;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.draftly-editor .tiptap p {
+  margin: 0.5rem 0;
+}
+
+.draftly-editor .tiptap ul {
+  list-style: disc;
+  padding-left: 1.5rem;
+}
+
+.draftly-editor .tiptap ol {
+  list-style: decimal;
+  padding-left: 1.5rem;
+}
+
+.draftly-editor .tiptap li {
+  margin: 0.25rem 0;
+}
+
+.draftly-editor .tiptap blockquote {
+  border-left: 3px solid #d1d5db;
+  padding-left: 1rem;
+  margin: 1rem 0;
 }
