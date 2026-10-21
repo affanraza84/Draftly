@@ -20,6 +20,7 @@ import {
   List,
   ListOrdered,
   Loader2,
+  MessageSquare,
   Redo,
   Save,
   Share2,
@@ -32,6 +33,7 @@ import { createClient } from "@/lib/supabase/client";
 import { ShareDialog } from "@/components/ShareDialog";
 import { VersionHistoryModal } from "@/components/VersionHistoryModal";
 import { CollaboratorPresence } from "@/components/CollaboratorPresence";
+import { DocumentCommentsDrawer } from "@/components/DocumentCommentsDrawer";
 import {
   convertTiptapToMarkdown,
   sanitizeMarkdownFilename,
@@ -64,6 +66,9 @@ function DocumentEditorContent() {
   const [message, setMessage] = useState("");
   const [shareOpen, setShareOpen] = useState(false);
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [selectedTextQuote, setSelectedTextQuote] = useState("");
+  const [selectionRange, setSelectionRange] = useState({ from: 0, to: 0 });
 
   const canEdit = role === "owner" || role === "editor";
 
@@ -72,6 +77,16 @@ function DocumentEditorContent() {
     immediatelyRender: false,
     content: "",
     editable: true,
+    onSelectionUpdate: ({ editor }) => {
+      const { from, to } = editor.state.selection;
+      if (from !== to) {
+        const text = editor.state.doc.textBetween(from, to, " ");
+        if (text.trim()) {
+          setSelectedTextQuote(text.slice(0, 150));
+          setSelectionRange({ from, to });
+        }
+      }
+    },
     onUpdate: () => {
       setDirty(true);
       setMessage("Unsaved changes");
@@ -537,6 +552,20 @@ function DocumentEditorContent() {
               <span className="hidden sm:inline">History</span>
             </button>
 
+            <button
+              type="button"
+              onClick={() => setCommentsOpen(!commentsOpen)}
+              className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition cursor-pointer shadow-xs ${
+                commentsOpen
+                  ? "border-[#5754D6] bg-[#5754D6]/10 text-[#5754D6]"
+                  : "border-[#E5E5E5] bg-white text-[#171717] hover:bg-[#FAFAF8]"
+              }`}
+              title="Open document comments"
+            >
+              <MessageSquare className="h-3.5 w-3.5 text-[#5754D6]" />
+              <span className="hidden sm:inline">Comments</span>
+            </button>
+
             {role === "owner" && (
               <button
                 type="button"
@@ -734,6 +763,18 @@ function DocumentEditorContent() {
             >
               <Redo className="h-3.5 w-3.5" />
             </button>
+
+            <span className="h-4 w-[1px] bg-[#E5E5E5] mx-1" />
+
+            <button
+              type="button"
+              aria-label="Comment on selection"
+              onClick={() => setCommentsOpen(true)}
+              className="p-1.5 rounded-md text-[#737373] hover:text-[#5754D6] hover:bg-white transition cursor-pointer"
+              title="Add comment on selected text"
+            >
+              <MessageSquare className="h-3.5 w-3.5" />
+            </button>
           </div>
         </div>
       )}
@@ -815,6 +856,21 @@ function DocumentEditorContent() {
         documentId={documentId}
         isOwner={role === "owner"}
         onRestore={handleRestoreVersion}
+      />
+
+      {/* Document Comments Drawer */}
+      <DocumentCommentsDrawer
+        isOpen={commentsOpen}
+        onClose={() => setCommentsOpen(false)}
+        documentId={documentId}
+        currentUserId={currentUserId}
+        isOwner={role === "owner"}
+        selectedTextQuote={selectedTextQuote}
+        selectionRange={selectionRange}
+        onClearSelection={() => {
+          setSelectedTextQuote("");
+          setSelectionRange({ from: 0, to: 0 });
+        }}
       />
     </div>
   );
