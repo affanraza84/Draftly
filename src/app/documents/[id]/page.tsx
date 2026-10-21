@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
@@ -7,7 +6,9 @@ import { useParams } from "next/navigation";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
+import { Edit3, Eye, Share2, Shield } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { ShareDialog } from "@/components/ShareDialog";
 
 type DocumentRecord = {
   id: string;
@@ -16,21 +17,29 @@ type DocumentRecord = {
   content_json: Record<string, unknown>;
 };
 
+type DocumentRole = "owner" | "editor" | "viewer";
+
 function DocumentEditorContent() {
   const params = useParams<{ id: string }>();
   const documentId = params.id;
   const supabase = useMemo(() => createClient(), []);
 
+  const [currentUserId, setCurrentUserId] = useState<string>("");
+  const [role, setRole] = useState<DocumentRole | null>(null);
   const [title, setTitle] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [shareOpen, setShareOpen] = useState(false);
+
+  const canEdit = role === "owner" || role === "editor";
 
   const editor = useEditor({
     extensions: [StarterKit, Underline],
     immediatelyRender: false,
     content: "",
+    editable: true,
     onUpdate: () => {
       setDirty(true);
       setMessage("Unsaved changes");
@@ -45,6 +54,22 @@ function DocumentEditorContent() {
     async function loadDocument() {
       setMessage("Loading document...");
 
+      // 1. Get current authenticated user
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (cancelled) return;
+
+      if (userError || !user) {
+        setMessage("You must be logged in to view this document.");
+        return;
+      }
+
+      setCurrentUserId(user.id);
+
+      // 2. Fetch the document (protected by RLS)
       const { data, error } = await supabase
         .from("documents")
         .select("id, owner_id, title, content_json")
@@ -54,11 +79,40 @@ function DocumentEditorContent() {
       if (cancelled) return;
 
       if (error || !data) {
-        setMessage("Unable to load this document. Check your access or return to the dashboard.");
+        setMessage(
+          "Unable to load this document. You do not have permission or it does not exist."
+        );
         return;
       }
 
       const doc = data as DocumentRecord;
+
+      // 3. Determine user role
+      if (doc.owner_id === user.id) {
+        setRole("owner");
+        editor?.setEditable(true);
+      } else {
+        // Query user's share permission
+        const { data: shareData } = await supabase
+          .from("document_shares")
+          .select("permission")
+          .eq("document_id", documentId)
+          .eq("shared_with_user_id", user.id)
+          .maybeSingle();
+
+        if (cancelled) return;
+
+        if (shareData?.permission === "editor") {
+          setRole("editor");
+          editor?.setEditable(true);
+        } else if (shareData?.permission === "viewer") {
+          setRole("viewer");
+          editor?.setEditable(false);
+        } else {
+          setMessage("You do not have permission to view this document.");
+          return;
+        }
+      }
 
       setTitle(doc.title);
       editor?.commands.setContent(doc.content_json);
@@ -75,7 +129,7 @@ function DocumentEditorContent() {
   }, [editor, documentId, supabase]);
 
   const saveDocument = useCallback(async () => {
-    if (!editor || !loaded || saving) return;
+    if (!editor || !loaded || saving || !canEdit) return;
 
     const cleanTitle = title.trim();
 
@@ -98,7 +152,12 @@ function DocumentEditorContent() {
         .eq("id", documentId);
 
       if (error) {
-        setMessage(`Save failed: ${error.message}`);
+        // If RLS rejects or access was revoked
+        if (error.code === "42501" || error.message.toLowerCase().includes("permission")) {
+          setMessage("Save failed: You no longer have permission to edit this document.");
+        } else {
+          setMessage(`Save failed: ${error.message}`);
+        }
         return;
       }
 
@@ -109,7 +168,7 @@ function DocumentEditorContent() {
     } finally {
       setSaving(false);
     }
-  }, [documentId, editor, loaded, saving, supabase, title]);
+  }, [canEdit, documentId, editor, loaded, saving, supabase, title]);
 
   if (!editor || !loaded) {
     return (
@@ -126,20 +185,66 @@ function DocumentEditorContent() {
 
   return (
     <main className="mx-auto max-w-4xl p-6 sm:p-8">
+      {/* Header */}
       <header className="flex flex-wrap items-center justify-between gap-4">
-        <Link href="/" className="text-sm text-gray-600 hover:underline">
-          ← All documents
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link href="/" className="text-sm text-gray-600 hover:underline">
+            ← All documents
+          </Link>
 
-        <button
-          onClick={() => void saveDocument()}
-          disabled={saving || !dirty}
-          className="rounded-lg bg-black px-5 py-2 text-white disabled:opacity-50"
-        >
-          {saving ? "Saving..." : "Save"}
-        </button>
+          {/* Role Badge */}
+          {role === "owner" && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-800">
+              <Shield className="h-3 w-3" />
+              Owner
+            </span>
+          )}
+          {role === "editor" && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+              <Edit3 className="h-3 w-3" />
+              Editor
+            </span>
+          )}
+          {role === "viewer" && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+              <Eye className="h-3 w-3" />
+              Viewer (Read Only)
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Share Button (Owner Only) */}
+          {role === "owner" && (
+            <button
+              type="button"
+              onClick={() => setShareOpen(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
+            >
+              <Share2 className="h-4 w-4" />
+              <span>Share</span>
+            </button>
+          )}
+
+          {/* Save Button (Owner or Editor) */}
+          {canEdit ? (
+            <button
+              type="button"
+              onClick={() => void saveDocument()}
+              disabled={saving || !dirty}
+              className="rounded-lg bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Save"}
+            </button>
+          ) : (
+            <span className="text-xs text-zinc-400">
+              Read-only mode
+            </span>
+          )}
+        </div>
       </header>
 
+      {/* Title Input */}
       <section className="mt-6">
         <label
           htmlFor="document-title"
@@ -151,88 +256,98 @@ function DocumentEditorContent() {
         <input
           id="document-title"
           value={title}
+          readOnly={!canEdit}
+          disabled={!canEdit}
           onChange={(event) => {
+            if (!canEdit) return;
             setTitle(event.target.value);
             setDirty(true);
             setMessage("Unsaved changes");
           }}
           maxLength={120}
-          className="w-full border-0 border-b bg-transparent py-3 text-3xl font-bold outline-none focus:border-black"
+          className={`w-full border-0 border-b bg-transparent py-3 text-3xl font-bold outline-none transition ${
+            canEdit
+              ? "focus:border-black"
+              : "cursor-not-allowed text-zinc-600 border-zinc-200"
+          }`}
         />
       </section>
 
+      {/* Editor & Formatting */}
       <section className="mt-6 rounded-xl border">
-        <div
-          role="toolbar"
-          aria-label="Text formatting"
-          className="flex flex-wrap gap-2 border-b p-3"
-        >
-          <button
-            type="button"
-            aria-label="Bold"
-            aria-pressed={editor.isActive("bold")}
-            onClick={() => editor.chain().focus().toggleBold().run()}
-            className="rounded border px-3 py-2 font-bold"
+        {canEdit && (
+          <div
+            role="toolbar"
+            aria-label="Text formatting"
+            className="flex flex-wrap gap-2 border-b p-3"
           >
-            B
-          </button>
+            <button
+              type="button"
+              aria-label="Bold"
+              aria-pressed={editor.isActive("bold")}
+              onClick={() => editor.chain().focus().toggleBold().run()}
+              className="rounded border px-3 py-2 font-bold"
+            >
+              B
+            </button>
 
-          <button
-            type="button"
-            aria-label="Italic"
-            aria-pressed={editor.isActive("italic")}
-            onClick={() => editor.chain().focus().toggleItalic().run()}
-            className="rounded border px-3 py-2 italic"
-          >
-            I
-          </button>
+            <button
+              type="button"
+              aria-label="Italic"
+              aria-pressed={editor.isActive("italic")}
+              onClick={() => editor.chain().focus().toggleItalic().run()}
+              className="rounded border px-3 py-2 italic"
+            >
+              I
+            </button>
 
-          <button
-            type="button"
-            aria-label="Underline"
-            aria-pressed={editor.isActive("underline")}
-            onClick={() => editor.chain().focus().toggleUnderline().run()}
-            className="rounded border px-3 py-2 underline"
-          >
-            U
-          </button>
+            <button
+              type="button"
+              aria-label="Underline"
+              aria-pressed={editor.isActive("underline")}
+              onClick={() => editor.chain().focus().toggleUnderline().run()}
+              className="rounded border px-3 py-2 underline"
+            >
+              U
+            </button>
 
-          <button
-            type="button"
-            onClick={() =>
-              editor.chain().focus().toggleHeading({ level: 1 }).run()
-            }
-            className="rounded border px-3 py-2"
-          >
-            H1
-          </button>
+            <button
+              type="button"
+              onClick={() =>
+                editor.chain().focus().toggleHeading({ level: 1 }).run()
+              }
+              className="rounded border px-3 py-2"
+            >
+              H1
+            </button>
 
-          <button
-            type="button"
-            onClick={() =>
-              editor.chain().focus().toggleHeading({ level: 2 }).run()
-            }
-            className="rounded border px-3 py-2"
-          >
-            H2
-          </button>
+            <button
+              type="button"
+              onClick={() =>
+                editor.chain().focus().toggleHeading({ level: 2 }).run()
+              }
+              className="rounded border px-3 py-2"
+            >
+              H2
+            </button>
 
-          <button
-            type="button"
-            onClick={() => editor.chain().focus().toggleBulletList().run()}
-            className="rounded border px-3 py-2"
-          >
-            • List
-          </button>
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().toggleBulletList().run()}
+              className="rounded border px-3 py-2"
+            >
+              • List
+            </button>
 
-          <button
-            type="button"
-            onClick={() => editor.chain().focus().toggleOrderedList().run()}
-            className="rounded border px-3 py-2"
-          >
-            1. List
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().toggleOrderedList().run()}
+              className="rounded border px-3 py-2"
+            >
+              1. List
+            </button>
+          </div>
+        )}
 
         <EditorContent
           editor={editor}
@@ -240,17 +355,29 @@ function DocumentEditorContent() {
         />
       </section>
 
+      {/* Status Bar */}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <p role="status" className="text-sm text-gray-500">
           {message}
         </p>
 
-        {dirty && (
+        {dirty && canEdit && (
           <span className="text-xs text-amber-700">
             Unsaved changes
           </span>
         )}
       </div>
+
+      {/* Share Dialog */}
+      {role === "owner" && (
+        <ShareDialog
+          isOpen={shareOpen}
+          onClose={() => setShareOpen(false)}
+          documentId={documentId}
+          documentTitle={title}
+          currentUserId={currentUserId}
+        />
+      )}
     </main>
   );
 }
