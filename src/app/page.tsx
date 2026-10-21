@@ -274,6 +274,13 @@ export default function HomePage() {
           setMessage(
             "Invalid Supabase API key (401). Please verify your NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local matches your project's 'anon public' key from Supabase Dashboard > Project Settings > API."
           );
+        } else if (
+          result.error.message.toLowerCase().includes("rate limit") ||
+          result.error.status === 429
+        ) {
+          setMessage(
+            "Email rate limit exceeded. To fix this: go to Supabase Dashboard > Authentication > Providers > Email, toggle OFF 'Confirm email', and click Save. This disables email verification and allows instant signups without sending emails."
+          );
         } else {
           setMessage(result.error.message);
         }
