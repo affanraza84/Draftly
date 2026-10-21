@@ -238,26 +238,73 @@ export default function HomePage() {
   }, [supabase]);
 
   async function authenticate(mode: "login" | "signup") {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
+    if (!cleanEmail || !cleanPassword) {
+      setMessage("Please enter both email and password.");
+      return;
+    }
+
+    if (cleanPassword.length < 6) {
+      setMessage("Password must be at least 6 characters.");
+      return;
+    }
+
     setBusy(true);
     setMessage("");
 
     try {
       const result =
         mode === "login"
-          ? await supabase.auth.signInWithPassword({ email, password })
-          : await supabase.auth.signUp({ email, password });
+          ? await supabase.auth.signInWithPassword({
+              email: cleanEmail,
+              password: cleanPassword,
+            })
+          : await supabase.auth.signUp({
+              email: cleanEmail,
+              password: cleanPassword,
+            });
 
       if (result.error) {
-        setMessage(result.error.message);
+        if (
+          result.error.message.toLowerCase().includes("api key") ||
+          result.error.status === 401
+        ) {
+          setMessage(
+            "Invalid Supabase API key (401). Please verify your NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local matches your project's 'anon public' key from Supabase Dashboard > Project Settings > API."
+          );
+        } else {
+          setMessage(result.error.message);
+        }
         return;
       }
 
-      if (mode === "signup" && !result.data.session) {
-        setMessage("Account created. Check your email to confirm your account.");
-        return;
+      if (mode === "signup") {
+        if (!result.data.session) {
+          // If user exists with email confirmation on, identities array is empty
+          if (
+            result.data.user?.identities &&
+            result.data.user.identities.length === 0
+          ) {
+            setMessage(
+              "An account with this email already exists. Please log in instead."
+            );
+            return;
+          }
+
+          setMessage(
+            "Account created! Check your email to confirm your account (or disable 'Confirm email' in Supabase Dashboard > Authentication > Providers > Email for instant login)."
+          );
+          return;
+        }
       }
 
       await loadDocuments();
+    } catch (err) {
+      setMessage(
+        err instanceof Error ? err.message : "Authentication failed. Check your connection."
+      );
     } finally {
       setBusy(false);
     }
