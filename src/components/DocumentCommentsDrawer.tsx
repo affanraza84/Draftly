@@ -84,9 +84,15 @@ export function DocumentCommentsDrawer({
         if (ignore) return;
 
         if (fetchErr) {
-          if (fetchErr.code === "42P01" || fetchErr.message.includes("does not exist")) {
+          if (
+            fetchErr.code === "42P01" ||
+            fetchErr.code === "PGRST205" ||
+            fetchErr.message.toLowerCase().includes("schema cache") ||
+            fetchErr.message.toLowerCase().includes("document_comments") ||
+            fetchErr.message.includes("does not exist")
+          ) {
             setError(
-              "Comments table is pending migration sync. Please run supabase/migrations/20261022020000_document_comments.sql in Supabase SQL Editor."
+              "Database migration required: The 'document_comments' table is missing from your Supabase database. Please run supabase/migrations/20261022020000_document_comments.sql in your Supabase SQL Editor."
             );
           } else {
             setError(`Failed to load comments: ${fetchErr.message}`);
@@ -179,7 +185,19 @@ export function DocumentCommentsDrawer({
         .single();
 
       if (insertErr) {
-        setError(`Failed to post comment: ${insertErr.message}`);
+        if (
+          insertErr.code === "42P01" ||
+          insertErr.code === "PGRST205" ||
+          insertErr.message.toLowerCase().includes("schema cache") ||
+          insertErr.message.toLowerCase().includes("document_comments") ||
+          insertErr.message.includes("does not exist")
+        ) {
+          setError(
+            "Database migration required: The 'document_comments' table is missing from your Supabase database. Please run supabase/migrations/20261022020000_document_comments.sql in your Supabase SQL Editor."
+          );
+        } else {
+          setError(`Failed to post comment: ${insertErr.message}`);
+        }
         return;
       }
 

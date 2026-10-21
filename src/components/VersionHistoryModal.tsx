@@ -75,10 +75,13 @@ export function VersionHistoryModal({
         if (fetchError) {
           if (
             fetchError.code === "42P01" ||
+            fetchError.code === "PGRST205" ||
+            fetchError.message.toLowerCase().includes("schema cache") ||
+            fetchError.message.toLowerCase().includes("document_versions") ||
             fetchError.message.includes("does not exist")
           ) {
             setError(
-              "Version history table is pending schema sync. Please run supabase/migrations/20261022010000_document_version_history.sql in Supabase SQL Editor."
+              "Database migration required: The 'document_versions' table is missing from your Supabase database. Please run supabase/migrations/20261022010000_document_version_history.sql in your Supabase SQL Editor."
             );
           } else {
             setError(`Failed to load version history: ${fetchError.message}`);
