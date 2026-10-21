@@ -307,6 +307,49 @@ describe("Document Sharing & Access Control Authorization Tests", () => {
     expect(() => db.readDocument(userOwner, docA.id)).toThrow("Document not found");
   });
 
+  // Test 9: Viewers and editors cannot delete documents
+  it("9. Viewers cannot delete documents", () => {
+    db.createShare(userOwner, docA.id, userRecipient, "viewer");
+    expect(() => db.deleteDocument(userRecipient, docA.id)).toThrow(
+      "42501: Only the document owner can delete the document"
+    );
+  });
+
+  // Test 10: Editors cannot change recipient permissions
+  it("10. Editors cannot change recipient permissions or administer sharing", () => {
+    const share1 = db.createShare(userOwner, docA.id, userRecipient, "editor");
+    const share2 = db.createShare(userOwner, docA.id, userUnrelated, "viewer");
+
+    // Editor attempts to promote viewer to editor
+    expect(() =>
+      db.updateSharePermission(userRecipient, share2.id, "editor")
+    ).toThrow("42501: Only document owner can update share permissions");
+
+    // Editor attempts to revoke another share
+    expect(() => db.revokeShare(userRecipient, share2.id)).toThrow(
+      "42501: Only document owner can revoke a share"
+    );
+
+    // Editor attempts to revoke their own share via owner endpoint
+    expect(() => db.revokeShare(userRecipient, share1.id)).toThrow(
+      "42501: Only document owner can revoke a share"
+    );
+  });
+
+  // Test 11: Viewers cannot change permissions or revoke shares
+  it("11. Viewers cannot change permissions or revoke shares", () => {
+    const share1 = db.createShare(userOwner, docA.id, userRecipient, "viewer");
+    const share2 = db.createShare(userOwner, docA.id, userUnrelated, "editor");
+
+    expect(() =>
+      db.updateSharePermission(userRecipient, share2.id, "viewer")
+    ).toThrow("42501: Only document owner can update share permissions");
+
+    expect(() => db.revokeShare(userRecipient, share1.id)).toThrow(
+      "42501: Only document owner can revoke a share"
+    );
+  });
+
   // Extra Test: Owner cannot add self as recipient (prevented by trigger)
   it("prevents owner from adding themselves as a share recipient", () => {
     expect(() =>

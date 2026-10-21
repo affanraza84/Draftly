@@ -145,6 +145,68 @@ function DocumentEditorContent() {
     };
   }, [editor, documentId, supabase]);
 
+  // Real-time permission sync: handles live permission changes or revocation while document is open
+  useEffect(() => {
+    if (!documentId || !currentUserId || role === "owner") return;
+
+    const channel = supabase
+      .channel(`doc-shares-live-${documentId}-${currentUserId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "document_shares",
+          filter: `document_id=eq.${documentId}`,
+        },
+        (payload) => {
+          if (payload.eventType === "DELETE") {
+            const oldRow = payload.old as { shared_with_user_id?: string; id?: string };
+            if (!oldRow.shared_with_user_id || oldRow.shared_with_user_id === currentUserId) {
+              setRole(null);
+              editor?.setEditable(false);
+              setMessage("Your access to this document has been revoked by the owner.");
+            }
+          } else if (payload.eventType === "UPDATE") {
+            const newRow = payload.new as {
+              shared_with_user_id: string;
+              permission: "viewer" | "editor";
+            };
+            if (newRow.shared_with_user_id === currentUserId) {
+              if (newRow.permission === "editor") {
+                setRole("editor");
+                editor?.setEditable(true);
+                setMessage("Your permissions have been upgraded to Editor.");
+              } else if (newRow.permission === "viewer") {
+                setRole("viewer");
+                editor?.setEditable(false);
+                setMessage("Your permissions have been changed to View Only.");
+              }
+            }
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "documents",
+          filter: `id=eq.${documentId}`,
+        },
+        () => {
+          setRole(null);
+          editor?.setEditable(false);
+          setMessage("This document was deleted by the owner.");
+        }
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [currentUserId, documentId, editor, role, supabase]);
+
   const saveDocument = useCallback(async () => {
     if (!editor || !loaded || saving || !canEdit) return;
 
@@ -533,11 +595,17 @@ function DocumentEditorContent() {
       {/* Main Centered Writing Surface */}
       <main className="flex-1 max-w-[840px] w-full mx-auto px-4 py-8 sm:py-12">
         <div className="bg-white rounded-2xl border border-[#E5E5E5] p-6 sm:p-14 lg:p-16 shadow-xs min-h-[750px]">
-          {/* Read-Only Banner if Viewer */}
-          {!canEdit && (
+          {/* Read-Only or Revoked Banner */}
+          {role === "viewer" && (
             <div className="mb-6 rounded-lg bg-[#FEF3C7] border border-[#FDE68A] p-3 text-xs text-[#B45309] flex items-center gap-2">
               <Eye className="h-4 w-4 shrink-0" />
               <span>You have view-only access to this document. Editing is disabled.</span>
+            </div>
+          )}
+          {role === null && loaded && (
+            <div className="mb-6 rounded-lg bg-[#FEF2F2] border border-red-200 p-3 text-xs text-[#B91C1C] flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>Your access to this document has been revoked. Editing is disabled.</span>
             </div>
           )}
 
