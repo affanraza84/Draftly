@@ -272,7 +272,7 @@ function DocumentEditorContent() {
           <div className="flex items-center gap-3 min-w-0">
             <Link
               href="/"
-              className="flex items-center gap-1 text-xs font-medium text-[#737373] hover:text-[#171717] px-2 py-1 rounded-md hover:bg-[#FAFAF8] transition shrink-0"
+              className="flex items-center gap-1 text-xs font-medium text-[#737373] hover:text-[#171717] px-2 py-1 rounded-md hover:bg-[#FAFAF8] transition shrink-0 cursor-pointer"
               title="Return to Workspace"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -333,7 +333,7 @@ function DocumentEditorContent() {
               <button
                 type="button"
                 onClick={() => setShareOpen(true)}
-                className="flex items-center gap-1.5 rounded-lg border border-[#E5E5E5] bg-white px-3 py-1.5 text-xs font-medium text-[#171717] hover:bg-[#FAFAF8] shadow-xs transition"
+                className="flex items-center gap-1.5 rounded-lg border border-[#E5E5E5] bg-white px-3 py-1.5 text-xs font-medium text-[#171717] hover:bg-[#FAFAF8] shadow-xs transition cursor-pointer"
               >
                 <Share2 className="h-3.5 w-3.5 text-[#5754D6]" />
                 <span>Share</span>
@@ -345,7 +345,7 @@ function DocumentEditorContent() {
                 type="button"
                 onClick={() => void saveDocument()}
                 disabled={saving || !dirty}
-                className="flex items-center gap-1.5 rounded-lg bg-[#5754D6] px-3.5 py-1.5 text-xs font-medium text-white shadow-xs transition hover:bg-[#4845C4] disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-lg bg-[#5754D6] px-3.5 py-1.5 text-xs font-medium text-white shadow-xs transition hover:bg-[#4845C4] disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
               >
                 <Save className="h-3.5 w-3.5" />
                 <span>{saving ? "Saving..." : "Save"}</span>
@@ -357,7 +357,7 @@ function DocumentEditorContent() {
                 type="button"
                 onClick={() => void deleteDocument()}
                 disabled={deleting}
-                className="p-1.5 rounded-lg border border-[#E5E5E5] text-[#737373] hover:text-[#B91C1C] hover:bg-[#FEF2F2] hover:border-red-200 transition disabled:opacity-50"
+                className="p-1.5 rounded-lg border border-[#E5E5E5] text-[#737373] hover:text-[#B91C1C] hover:bg-[#FEF2F2] hover:border-red-200 transition disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
                 title="Delete document"
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -381,7 +381,7 @@ function DocumentEditorContent() {
               aria-label="Bold"
               aria-pressed={editor.isActive("bold")}
               onClick={() => editor.chain().focus().toggleBold().run()}
-              className={`p-1.5 rounded-md transition ${
+              className={`p-1.5 rounded-md transition cursor-pointer ${
                 editor.isActive("bold")
                   ? "bg-[#5754D6]/10 text-[#5754D6] font-bold"
                   : "hover:bg-white text-[#737373] hover:text-[#171717]"
@@ -396,7 +396,7 @@ function DocumentEditorContent() {
               aria-label="Italic"
               aria-pressed={editor.isActive("italic")}
               onClick={() => editor.chain().focus().toggleItalic().run()}
-              className={`p-1.5 rounded-md transition ${
+              className={`p-1.5 rounded-md transition cursor-pointer ${
                 editor.isActive("italic")
                   ? "bg-[#5754D6]/10 text-[#5754D6]"
                   : "hover:bg-white text-[#737373] hover:text-[#171717]"
@@ -411,7 +411,7 @@ function DocumentEditorContent() {
               aria-label="Underline"
               aria-pressed={editor.isActive("underline")}
               onClick={() => editor.chain().focus().toggleUnderline().run()}
-              className={`p-1.5 rounded-md transition ${
+              className={`p-1.5 rounded-md transition cursor-pointer ${
                 editor.isActive("underline")
                   ? "bg-[#5754D6]/10 text-[#5754D6]"
                   : "hover:bg-white text-[#737373] hover:text-[#171717]"
@@ -429,7 +429,7 @@ function DocumentEditorContent() {
               aria-label="Heading 1"
               aria-pressed={editor.isActive("heading", { level: 1 })}
               onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-              className={`px-2 py-1 rounded-md text-xs font-semibold transition ${
+              className={`px-2 py-1 rounded-md text-xs font-semibold transition cursor-pointer ${
                 editor.isActive("heading", { level: 1 })
                   ? "bg-[#5754D6]/10 text-[#5754D6]"
                   : "hover:bg-white text-[#737373] hover:text-[#171717]"
@@ -444,7 +444,7 @@ function DocumentEditorContent() {
               aria-label="Heading 2"
               aria-pressed={editor.isActive("heading", { level: 2 })}
               onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-              className={`px-2 py-1 rounded-md text-xs font-semibold transition ${
+              className={`px-2 py-1 rounded-md text-xs font-semibold transition cursor-pointer ${
                 editor.isActive("heading", { level: 2 })
                   ? "bg-[#5754D6]/10 text-[#5754D6]"
                   : "hover:bg-white text-[#737373] hover:text-[#171717]"
@@ -459,7 +459,7 @@ function DocumentEditorContent() {
               aria-label="Heading 3"
               aria-pressed={editor.isActive("heading", { level: 3 })}
               onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-              className={`px-2 py-1 rounded-md text-xs font-semibold transition ${
+              className={`px-2 py-1 rounded-md text-xs font-semibold transition cursor-pointer ${
                 editor.isActive("heading", { level: 3 })
                   ? "bg-[#5754D6]/10 text-[#5754D6]"
                   : "hover:bg-white text-[#737373] hover:text-[#171717]"
@@ -477,7 +477,7 @@ function DocumentEditorContent() {
               aria-label="Bullet list"
               aria-pressed={editor.isActive("bulletList")}
               onClick={() => editor.chain().focus().toggleBulletList().run()}
-              className={`p-1.5 rounded-md transition ${
+              className={`p-1.5 rounded-md transition cursor-pointer ${
                 editor.isActive("bulletList")
                   ? "bg-[#5754D6]/10 text-[#5754D6]"
                   : "hover:bg-white text-[#737373] hover:text-[#171717]"
@@ -492,7 +492,7 @@ function DocumentEditorContent() {
               aria-label="Ordered list"
               aria-pressed={editor.isActive("orderedList")}
               onClick={() => editor.chain().focus().toggleOrderedList().run()}
-              className={`p-1.5 rounded-md transition ${
+              className={`p-1.5 rounded-md transition cursor-pointer ${
                 editor.isActive("orderedList")
                   ? "bg-[#5754D6]/10 text-[#5754D6]"
                   : "hover:bg-white text-[#737373] hover:text-[#171717]"
@@ -510,7 +510,7 @@ function DocumentEditorContent() {
               aria-label="Undo"
               disabled={!editor.can().undo()}
               onClick={() => editor.chain().focus().undo().run()}
-              className="p-1.5 rounded-md text-[#737373] hover:text-[#171717] hover:bg-white transition disabled:opacity-30"
+              className="p-1.5 rounded-md text-[#737373] hover:text-[#171717] hover:bg-white transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-30"
               title="Undo"
             >
               <Undo className="h-3.5 w-3.5" />
@@ -521,7 +521,7 @@ function DocumentEditorContent() {
               aria-label="Redo"
               disabled={!editor.can().redo()}
               onClick={() => editor.chain().focus().redo().run()}
-              className="p-1.5 rounded-md text-[#737373] hover:text-[#171717] hover:bg-white transition disabled:opacity-30"
+              className="p-1.5 rounded-md text-[#737373] hover:text-[#171717] hover:bg-white transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-30"
               title="Redo"
             >
               <Redo className="h-3.5 w-3.5" />

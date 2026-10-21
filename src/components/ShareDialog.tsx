@@ -353,7 +353,7 @@ export function ShareDialog({
             onClick={onClose}
             disabled={submitting || mutatingShareId !== null}
             aria-label="Close dialog"
-            className="rounded-lg p-1 text-[#737373] hover:bg-[#FAFAF8] hover:text-[#171717] disabled:opacity-50 transition"
+            className="rounded-lg p-1 text-[#737373] hover:bg-[#FAFAF8] hover:text-[#171717] disabled:opacity-50 transition cursor-pointer"
           >
             <X className="h-4 w-4" />
           </button>
@@ -397,7 +397,7 @@ export function ShareDialog({
               <button
                 type="submit"
                 disabled={submitting || mutatingShareId !== null}
-                className="flex items-center gap-1.5 rounded-lg bg-[#5754D6] px-4 py-2 text-xs font-medium text-white shadow-xs transition hover:bg-[#4845C4] disabled:opacity-50 shrink-0"
+                className="flex items-center gap-1.5 rounded-lg bg-[#5754D6] px-4 py-2 text-xs font-medium text-white shadow-xs transition hover:bg-[#4845C4] disabled:opacity-50 shrink-0 cursor-pointer disabled:cursor-not-allowed"
               >
                 {submitting ? (
                   <>
@@ -519,7 +519,7 @@ export function ShareDialog({
                         }
                         title="Revoke access"
                         aria-label={`Revoke access for ${recipientDisplay}`}
-                        className="rounded-lg p-1.5 text-[#737373] transition hover:bg-[#FEF2F2] hover:text-[#B91C1C] disabled:opacity-50"
+                        className="rounded-lg p-1.5 text-[#737373] transition hover:bg-[#FEF2F2] hover:text-[#B91C1C] disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
                       >
                         {isMutating ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin text-[#737373]" />
@@ -541,7 +541,7 @@ export function ShareDialog({
             type="button"
             onClick={onClose}
             disabled={submitting || mutatingShareId !== null}
-            className="rounded-lg border border-[#E5E5E5] bg-white px-4 py-1.5 text-xs font-medium text-[#171717] hover:bg-[#FAFAF8] transition disabled:opacity-50 shadow-xs"
+            className="rounded-lg border border-[#E5E5E5] bg-white px-4 py-1.5 text-xs font-medium text-[#171717] hover:bg-[#FAFAF8] transition disabled:opacity-50 shadow-xs cursor-pointer disabled:cursor-not-allowed"
           >
             Done
           </button>

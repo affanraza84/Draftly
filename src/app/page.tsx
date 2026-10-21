@@ -553,7 +553,7 @@ export default function HomePage() {
                 setAuthMode("login");
                 setAuthError("");
               }}
-              className={`flex-1 py-1.5 text-xs font-medium rounded-md transition ${
+              className={`flex-1 py-1.5 text-xs font-medium rounded-md transition cursor-pointer ${
                 authMode === "login"
                   ? "bg-white text-[#171717] shadow-xs"
                   : "text-[#737373] hover:text-[#171717]"
@@ -567,7 +567,7 @@ export default function HomePage() {
                 setAuthMode("signup");
                 setAuthError("");
               }}
-              className={`flex-1 py-1.5 text-xs font-medium rounded-md transition ${
+              className={`flex-1 py-1.5 text-xs font-medium rounded-md transition cursor-pointer ${
                 authMode === "signup"
                   ? "bg-white text-[#171717] shadow-xs"
                   : "text-[#737373] hover:text-[#171717]"
@@ -624,7 +624,7 @@ export default function HomePage() {
             <button
               disabled={busy}
               type="submit"
-              className="w-full rounded-lg bg-[#5754D6] py-2.5 px-4 text-sm font-medium text-white shadow-xs transition hover:bg-[#4845C4] disabled:opacity-60 flex items-center justify-center gap-2"
+              className="w-full rounded-lg bg-[#5754D6] py-2.5 px-4 text-sm font-medium text-white shadow-xs transition hover:bg-[#4845C4] disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {busy ? (
                 <>
@@ -672,7 +672,7 @@ export default function HomePage() {
         <button
           type="button"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="p-1.5 rounded-lg border border-[#E5E5E5] text-[#737373] hover:text-[#171717]"
+          className="p-1.5 rounded-lg border border-[#E5E5E5] text-[#737373] hover:text-[#171717] cursor-pointer"
           aria-label="Toggle navigation menu"
         >
           {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -703,7 +703,7 @@ export default function HomePage() {
           <button
             type="button"
             onClick={() => setIsCreatingNew(true)}
-            className="w-full flex items-center justify-center gap-2 rounded-lg bg-[#5754D6] px-3.5 py-2 text-xs font-medium text-white shadow-xs transition hover:bg-[#4845C4]"
+            className="w-full flex items-center justify-center gap-2 rounded-lg bg-[#5754D6] px-3.5 py-2 text-xs font-medium text-white shadow-xs transition hover:bg-[#4845C4] cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             <span>New Document</span>
@@ -715,7 +715,7 @@ export default function HomePage() {
               setImportModalOpen(true);
               setImportError("");
             }}
-            className="w-full flex items-center justify-center gap-2 rounded-lg border border-[#E5E5E5] bg-[#FAFAF8] px-3.5 py-2 text-xs font-medium text-[#171717] transition hover:bg-[#F0F0EE]"
+            className="w-full flex items-center justify-center gap-2 rounded-lg border border-[#E5E5E5] bg-[#FAFAF8] px-3.5 py-2 text-xs font-medium text-[#171717] transition hover:bg-[#F0F0EE] cursor-pointer"
           >
             <Upload className="h-3.5 w-3.5 text-[#737373]" />
             <span>Import File</span>
@@ -730,7 +730,7 @@ export default function HomePage() {
               setActiveTab("all");
               setMobileMenuOpen(false);
             }}
-            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition ${
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition cursor-pointer ${
               activeTab === "all"
                 ? "bg-[#F4F4F3] text-[#171717] font-semibold"
                 : "text-[#737373] hover:text-[#171717] hover:bg-[#FAFAF8]"
@@ -751,7 +751,7 @@ export default function HomePage() {
               setActiveTab("mine");
               setMobileMenuOpen(false);
             }}
-            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition ${
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition cursor-pointer ${
               activeTab === "mine"
                 ? "bg-[#F4F4F3] text-[#171717] font-semibold"
                 : "text-[#737373] hover:text-[#171717] hover:bg-[#FAFAF8]"
@@ -772,7 +772,7 @@ export default function HomePage() {
               setActiveTab("shared");
               setMobileMenuOpen(false);
             }}
-            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition ${
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition cursor-pointer ${
               activeTab === "shared"
                 ? "bg-[#F4F4F3] text-[#171717] font-semibold"
                 : "text-[#737373] hover:text-[#171717] hover:bg-[#FAFAF8]"
@@ -807,7 +807,7 @@ export default function HomePage() {
               type="button"
               onClick={() => void logout()}
               title="Log out"
-              className="p-1.5 rounded-lg text-[#737373] hover:text-[#171717] hover:bg-[#E5E5E5] transition"
+              className="p-1.5 rounded-lg text-[#737373] hover:text-[#171717] hover:bg-[#E5E5E5] transition cursor-pointer"
             >
               <LogOut className="h-4 w-4" />
             </button>
@@ -840,7 +840,7 @@ export default function HomePage() {
             <button
               type="button"
               onClick={() => setIsCreatingNew(true)}
-              className="flex items-center gap-1.5 rounded-lg bg-[#5754D6] px-4 py-2 text-xs font-medium text-white shadow-xs transition hover:bg-[#4845C4]"
+              className="flex items-center gap-1.5 rounded-lg bg-[#5754D6] px-4 py-2 text-xs font-medium text-white shadow-xs transition hover:bg-[#4845C4] cursor-pointer"
             >
               <Plus className="h-3.5 w-3.5" />
               <span>Create</span>
@@ -851,7 +851,7 @@ export default function HomePage() {
                 setImportModalOpen(true);
                 setImportError("");
               }}
-              className="flex items-center gap-1.5 rounded-lg border border-[#E5E5E5] bg-white px-3.5 py-2 text-xs font-medium text-[#171717] shadow-xs transition hover:bg-[#FAFAF8]"
+              className="flex items-center gap-1.5 rounded-lg border border-[#E5E5E5] bg-white px-3.5 py-2 text-xs font-medium text-[#171717] shadow-xs transition hover:bg-[#FAFAF8] cursor-pointer"
             >
               <Upload className="h-3.5 w-3.5 text-[#737373]" />
               <span>Import</span>
@@ -867,7 +867,7 @@ export default function HomePage() {
               <button
                 type="button"
                 onClick={() => setIsCreatingNew(false)}
-                className="text-[#737373] hover:text-[#171717]"
+                className="text-[#737373] hover:text-[#171717] cursor-pointer"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -889,7 +889,7 @@ export default function HomePage() {
                 type="button"
                 disabled={busy}
                 onClick={() => void createDocument()}
-                className="rounded-lg bg-[#5754D6] px-4 py-2 text-xs font-medium text-white transition hover:bg-[#4845C4] disabled:opacity-50"
+                className="rounded-lg bg-[#5754D6] px-4 py-2 text-xs font-medium text-white transition hover:bg-[#4845C4] disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
               >
                 {busy ? "Creating..." : "Create"}
               </button>
@@ -913,7 +913,7 @@ export default function HomePage() {
               <button
                 type="button"
                 onClick={() => setSearchQuery("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#A3A3A3] hover:text-[#171717]"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#A3A3A3] hover:text-[#171717] cursor-pointer"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -922,7 +922,7 @@ export default function HomePage() {
 
           {/* Controls: Sort and View Mode */}
           <div className="flex items-center gap-2 self-end sm:self-auto">
-            <div className="flex items-center gap-1.5 border border-[#E5E5E5] bg-white rounded-lg px-2.5 py-1.5">
+            <div className="flex items-center gap-1.5 border border-[#E5E5E5] bg-white rounded-lg px-2.5 py-1.5 cursor-pointer">
               <Filter className="h-3.5 w-3.5 text-[#737373]" />
               <select
                 value={sortBy}
@@ -940,7 +940,7 @@ export default function HomePage() {
                 type="button"
                 onClick={() => setViewMode("grid")}
                 title="Grid View"
-                className={`p-1.5 rounded-md transition ${
+                className={`p-1.5 rounded-md transition cursor-pointer ${
                   viewMode === "grid"
                     ? "bg-[#F4F4F3] text-[#171717]"
                     : "text-[#737373] hover:text-[#171717]"
@@ -952,7 +952,7 @@ export default function HomePage() {
                 type="button"
                 onClick={() => setViewMode("list")}
                 title="List View"
-                className={`p-1.5 rounded-md transition ${
+                className={`p-1.5 rounded-md transition cursor-pointer ${
                   viewMode === "list"
                     ? "bg-[#F4F4F3] text-[#171717]"
                     : "text-[#737373] hover:text-[#171717]"
@@ -992,7 +992,7 @@ export default function HomePage() {
                   <button
                     type="button"
                     onClick={() => setIsCreatingNew(true)}
-                    className="rounded-lg bg-[#5754D6] px-4 py-2 text-xs font-medium text-white shadow-xs transition hover:bg-[#4845C4]"
+                    className="rounded-lg bg-[#5754D6] px-4 py-2 text-xs font-medium text-white shadow-xs transition hover:bg-[#4845C4] cursor-pointer"
                   >
                     New Document
                   </button>
@@ -1002,7 +1002,7 @@ export default function HomePage() {
                       setImportModalOpen(true);
                       setImportError("");
                     }}
-                    className="rounded-lg border border-[#E5E5E5] bg-white px-3.5 py-2 text-xs font-medium text-[#171717] hover:bg-[#FAFAF8] transition"
+                    className="rounded-lg border border-[#E5E5E5] bg-white px-3.5 py-2 text-xs font-medium text-[#171717] hover:bg-[#FAFAF8] transition cursor-pointer"
                   >
                     Import File
                   </button>
@@ -1016,7 +1016,7 @@ export default function HomePage() {
                 <Link
                   key={doc.id}
                   href={`/documents/${doc.id}`}
-                  className="group relative flex flex-col justify-between rounded-xl border border-[#E5E5E5] bg-white p-5 transition hover:border-[#5754D6]/50 hover:shadow-xs"
+                  className="group relative flex flex-col justify-between rounded-xl border border-[#E5E5E5] bg-white p-5 transition hover:border-[#5754D6]/50 hover:shadow-xs cursor-pointer"
                 >
                   <div>
                     <div className="flex items-center justify-between gap-2 mb-3">
@@ -1112,7 +1112,7 @@ export default function HomePage() {
 
                     <Link
                       href={`/documents/${doc.id}`}
-                      className="rounded-lg border border-[#E5E5E5] bg-white px-3 py-1.5 text-xs font-medium text-[#171717] hover:bg-[#FAFAF8] transition"
+                      className="rounded-lg border border-[#E5E5E5] bg-white px-3 py-1.5 text-xs font-medium text-[#171717] hover:bg-[#FAFAF8] transition cursor-pointer"
                     >
                       Open
                     </Link>
@@ -1166,7 +1166,7 @@ export default function HomePage() {
                 type="button"
                 onClick={() => setImportModalOpen(false)}
                 disabled={importing}
-                className="text-[#737373] hover:text-[#171717]"
+                className="text-[#737373] hover:text-[#171717] cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1185,7 +1185,10 @@ export default function HomePage() {
                 const file = e.dataTransfer.files?.[0];
                 if (file) void handleFileProcess(file);
               }}
-              className={`mt-5 rounded-xl border-2 border-dashed p-8 text-center transition ${
+              onClick={() => {
+                if (!importing) fileInputRef.current?.click();
+              }}
+              className={`mt-5 rounded-xl border-2 border-dashed p-8 text-center transition cursor-pointer ${
                 dragActive
                   ? "border-[#5754D6] bg-[#5754D6]/5"
                   : "border-[#E5E5E5] bg-[#FAFAF8] hover:border-[#D4D4D4]"
@@ -1227,8 +1230,11 @@ export default function HomePage() {
                   </p>
                   <button
                     type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-white border border-[#E5E5E5] px-3.5 py-1.5 text-xs font-medium text-[#171717] hover:bg-[#F4F4F3] transition shadow-xs"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      fileInputRef.current?.click();
+                    }}
+                    className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-white border border-[#E5E5E5] px-3.5 py-1.5 text-xs font-medium text-[#171717] hover:bg-[#F4F4F3] transition shadow-xs cursor-pointer"
                   >
                     Browse Files
                   </button>
@@ -1250,7 +1256,7 @@ export default function HomePage() {
                 type="button"
                 onClick={() => setImportModalOpen(false)}
                 disabled={importing}
-                className="rounded-lg border border-[#E5E5E5] px-4 py-2 text-xs font-medium text-[#171717] hover:bg-[#FAFAF8] transition"
+                className="rounded-lg border border-[#E5E5E5] px-4 py-2 text-xs font-medium text-[#171717] hover:bg-[#FAFAF8] transition cursor-pointer"
               >
                 Cancel
               </button>
