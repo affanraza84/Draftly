@@ -26,11 +26,32 @@ Draftly provides a secure, intuitive environment for drafting, editing, importin
   - Generates document title from sanitized filename (clamped to 120 chars).
   - Safe token-based AST conversion (`marked`) preserving headings, lists, inline marks, code blocks, and blockquotes without executing HTML.
   - Rejection of binary/unsupported extensions, oversized files, and empty files with clear error states.
-- **Granular Document Sharing**:
+- **Granular Role-Based Sharing Permissions**:
   - Modal dialog to invite collaborators by email as **Editor** or **Viewer**.
   - Recipient email lookup powered by an authenticated Server Action against a synchronized `public.profiles` table (preventing account enumeration).
   - Instant role updates (promote/demote) and access revocation.
+  - Live permission synchronization: if an open document's permission is downgraded or revoked, the editor is immediately updated/disabled via Supabase Realtime.
   - Anti-self-share trigger preventing owners from sharing documents with themselves.
+- **Markdown Document Export**:
+  - One-click export of current editor state to standard CommonMark (`.md`).
+  - Preserves headings (H1–H6), paragraphs, bold, italic, strikethrough, lists, blockquotes, and links.
+  - Safe underline serialization: standard Markdown has no native underline syntax; underlines are safely preserved using compliant HTML `<u>text</u>` tags.
+  - Filename sanitization protecting against illegal filesystem characters.
+- **Document Version History**:
+  - Monotonically incrementing version snapshots recorded on document save.
+  - Automatic suppression of duplicate sequential snapshots when content and title haven't changed.
+  - Interactive version history modal showing version number, author, timestamp, change summary, and restore action.
+  - Owner-only restoration: restores historical content while creating a new restoration snapshot, preserving the complete audit trail.
+- **Real-Time Collaborator Presence**:
+  - Lightweight presence indicator using Supabase Realtime Presence (`doc-presence-${id}`).
+  - Live collaborator avatar stack with user initials, deterministic color hashing, and role tooltips.
+  - Subtle online pulsing indicator and graceful offline fallback.
+  - Strictly restricted to authenticated users with validated read access.
+- **Anchored Document Comments**:
+  - Highlights selected text ranges in the editor and anchors comments with quote snippets and offsets.
+  - Real-time comment updates across open collaborator tabs via Supabase Realtime.
+  - Resolution workflow: authors and document owners can resolve/reopen comments.
+  - Deletion controls: strictly authorized to comment authors and document owners.
 - **Dual Dashboard**: Split view organizing documents into "My Documents" (with Delete & Share actions) and "Shared with me" (with role badge and owner email).
 - **Navigation Safety**: `beforeunload` warning when closing or navigating away with unsaved edits.
 
@@ -42,10 +63,10 @@ Draftly provides a secure, intuitive environment for drafting, editing, importin
 - **Language**: [TypeScript](https://www.typescriptlang.org/) (Strict mode enabled)
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/)
 - **Editor**: [Tiptap](https://tiptap.dev/) (`@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/extension-underline`)
-- **Backend / Database**: [Supabase](https://supabase.com/) (PostgreSQL 15+, Auth, Row Level Security)
+- **Backend / Database**: [Supabase](https://supabase.com/) (PostgreSQL 15+, Auth, Row Level Security, Realtime Presence)
 - **Client Libraries**: `@supabase/supabase-js`, `@supabase/ssr`
 - **Markdown AST Tokenizer**: [marked](https://marked.js.org/)
-- **Testing Framework**: [Vitest](https://vitest.dev/) (4 test suites, 44 unit & integration tests)
+- **Testing Framework**: [Vitest](https://vitest.dev/) (8 test suites, 78 unit & integration tests)
 - **Icons**: [Lucide React](https://lucide.dev/)
 
 ---
@@ -55,7 +76,8 @@ Draftly provides a secure, intuitive environment for drafting, editing, importin
 - **PostgreSQL Row Level Security (RLS)**: Access control is enforced at the database layer rather than relying solely on UI button hiding. Custom `SECURITY DEFINER` helper functions (`is_document_owner`, `has_document_access`, `can_edit_document`) use a fixed `SET search_path = public` to avoid infinite recursion and prevent search-path hijacking.
 - **Tiptap JSONB Persistence**: Rather than saving raw HTML (which exposes XSS vectors and requires sanitization), Draftly stores structured Tiptap JSON in PostgreSQL `jsonb` columns. This guarantees clean serializability, backward compatibility, and native client rehydration.
 - **AST-Based File Import**: Markdown conversion tokenizes input with `marked.lexer()` into an Abstract Syntax Tree (AST) before constructing Tiptap schema objects. This bypasses the need for `dangerouslySetInnerHTML` and prevents script injection.
-- **Concurrency Model (Last-Write-Wins)**: To keep the architecture robust without operational transformation (OT) or complex CRDT overhead, Draftly operates on a single-active-editor model. To safeguard against silent data loss, save operations chain `.select("id")` and assert affected rows; if an editor's permissions are revoked while their tab is open, they receive an immediate explicit error instead of a false success message.
+- **Audit-Preserving Version Restoration**: When an owner restores a previous version, the history is not rewritten or truncated. Instead, the historical content is applied to the live document and a new audit record ("Restored from version X") is created.
+- **Real-Time Presence vs. Full Collaborative Editing**: Presence indicators use Supabase Realtime Presence to show who is viewing a document. To prevent brittle synchronization without heavy CRDT infrastructure (Yjs), document saves continue to assert row-level permissions with last-write-wins persistence.
 - **Server Action for Email Discovery**: Rather than granting public read permissions on `auth.users`, a database trigger populates `public.profiles(id, email)`. The Server Action `lookupRecipientByEmail` strictly searches for matching IDs using standard equality queries without exposing user directories.
 
 ---
@@ -96,13 +118,15 @@ Open [http://localhost:3000](http://localhost:3000).
 ## 6. Supabase Setup & Database Migrations
 
 ### Applying Migrations
-The complete database migration is located in:
-`supabase/migrations/20261021230000_document_sharing_and_access_control.sql`
+The database migrations are located in `supabase/migrations/`:
+1. `20261021230000_document_sharing_and_access_control.sql` (Core documents, sharing, RLS)
+2. `20261022010000_document_version_history.sql` (Version history, snapshotting, and restoration)
+3. `20261022020000_document_comments.sql` (Anchored comments, resolution, and authorization)
 
 #### Option A: Supabase Dashboard SQL Editor (Recommended)
 1. Navigate to your project on [Supabase](https://supabase.com/dashboard).
 2. Click **SQL Editor** in the left sidebar.
-3. Open or paste `supabase/migrations/20261021230000_document_sharing_and_access_control.sql`.
+3. Open or paste the migration files in chronological order.
 4. Click **Run**.
 
 #### Option B: Supabase CLI
@@ -130,29 +154,19 @@ supabase migration up
 | **Edit Content & Title** | Yes | Yes | Blocked by UI & RLS | Blocked by RLS |
 | **Delete Document** | Yes | Blocked by UI & RLS | Blocked by UI & RLS | Blocked by RLS |
 | **Administer Shares (Add / Revoke)** | Yes | Blocked by UI & RLS | Blocked by UI & RLS | Blocked by RLS |
+| **Export to Markdown** | Yes | Yes | Yes | Blocked by RLS |
+| **View Version History** | Yes | Yes | Yes | Blocked by RLS |
+| **Restore Previous Versions** | Yes | Blocked by UI & RLS | Blocked by UI & RLS | Blocked by RLS |
+| **View Real-Time Presence** | Yes | Yes | Yes | Blocked by Channel Check |
+| **Create & View Comments** | Yes | Yes | Yes | Blocked by RLS |
+| **Resolve & Delete Comments** | Yes (All) | Author Only | Author Only | Blocked by RLS |
 | **Share Revocation Effect** | Immediate | Immediate | Immediate | N/A |
 
 ---
 
-## 8. Supported File Import Formats & Limits
+## 8. Automated Testing & Verification
 
-- **Supported Formats**: Plain text (`.txt`), Markdown (`.md`, `.markdown`).
-- **File Size Limit**: 1 MB (strictly checked before file reading).
-- **Title Sanitization**: Extracted from filename, stripped of extension, and truncated to 120 characters.
-- **Conversion Capabilities**:
-  - Headings 1 through 6
-  - Paragraphs and blockquotes
-  - Bulleted lists (`bulletList` > `listItem`)
-  - Numbered lists (`orderedList` > `listItem`)
-  - Inline formatting: **bold**, *italic*, and `inline code`
-  - Code blocks
-- **Error Handling**: Non-text, oversized, empty, or whitespace-only files produce descriptive UI error alerts without creating invalid records.
-
----
-
-## 9. Automated Testing & Verification
-
-Draftly maintains 44 automated tests executed with Vitest:
+Draftly maintains 78 automated tests executed with Vitest:
 
 ```bash
 # Run unit and integration tests
@@ -168,11 +182,15 @@ npx tsc --noEmit
 npm run build
 ```
 
-### Test Suites Overview:
+### Test Suites Overview (78 Tests Across 8 Suites):
 1. **Document Import (`tests/document-import.test.ts`)** (17 tests): Tests file extension validation, size limits, whitespace rejection, AST parsing, and mark conversions.
-2. **Sharing Authorization (`tests/sharing-authorization.test.ts`)** (9 tests): Validates RLS rule logic for owners, editors, viewers, and non-collaborators, verifying write and share prohibitions.
-3. **Document Management & Validation (`tests/document-management.test.ts`)** (11 tests): Tests title normalization, clamping, empty fallbacks, PostgREST 0-row update detection on revoked permissions, and Tiptap schema mark compatibility.
-4. **SQL Policy Verification (`tests/sql-policies.test.ts`)** (7 tests): Confirms security definer search path constraints, table schemas, triggers, and RLS enablement.
+2. **Document Markdown Export (`tests/document-export.test.ts`)** (10 tests): Validates Markdown serialization for headings, marks, underline `<u>` representation, lists, links, blockquotes, code blocks, filename sanitization, and roundtrip import/export fidelity.
+3. **Sharing Authorization (`tests/sharing-authorization.test.ts`)** (12 tests): Validates complete role matrix for owners, editors, and viewers, verifying deletion, share administration, and revocation boundaries.
+4. **Document Version History (`tests/document-version-history.test.ts`)** (9 tests): Validates monotonic version numbers, duplicate snapshot prevention, owner-only restoration, and audit trail preservation.
+5. **Real-Time Presence (`tests/realtime-presence.test.ts`)** (5 tests): Tests avatar initials extraction, color hashing, multi-tab deduplication, and unauthorized access rejection.
+6. **Document Comments (`tests/document-comments.test.ts`)** (7 tests): Tests anchored selections, author and owner resolution permissions, deletion restrictions, and empty comment rejections.
+7. **Document Management & Validation (`tests/document-management.test.ts`)** (11 tests): Tests title normalization, clamping, empty fallbacks, PostgREST 0-row update detection on revoked permissions, and Tiptap schema mark compatibility.
+8. **SQL Policy Verification (`tests/sql-policies.test.ts`)** (7 tests): Confirms security definer search path constraints, table schemas, triggers, and RLS enablement.
 
 ---
 
@@ -228,6 +246,7 @@ To test full multi-user authorization and sharing workflows:
 1. **Concurrent Real-Time Collaboration**: Draftly is designed as a single-editor document system with last-write-wins persistence. It does not use CRDTs (Yjs) or operational transformation. Simultaneous edits from multiple active tabs will overwrite the earlier save.
 2. **Supabase Free Tier Rate Limits**: Supabase's default email service restricts email sending to 3–4 confirmation emails per hour. Disabling email confirmation in Supabase is recommended for testing.
 3. **Session Cookies**: Session cookies are scoped to the application origin. Opening multiple browser profiles or incognito windows is recommended when simulating multi-user collaboration simultaneously.
+4. **Suggestion Mode Deferred**: Full suggestion mode (tracking inline proposed additions and deletions as reviewable diff overlays) is deferred to protect document structure reliability. Anchored discussions and comments with text selection quoting, author attribution, resolution workflows, and deletion controls are fully implemented and verified.
 
 ---
 
